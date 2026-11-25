@@ -1,10 +1,11 @@
-# Reusable Flight Services (Class B TCB + Class C Isolated Services)
+# Reusable Flight Services
+# Assurance criticality (NASA Class B/C/D) is assigned per-partition in mission.toml.
 # Subdirectories will register targets as services are implemented:
-#   - services/class_b/cdh
-#   - services/class_b/comms
-#   - services/class_b/fdir_slot_mgr
-#   - services/class_c/storage
-#   - services/class_c/autonomy_sandbox
+#   - services/cdh
+#   - services/comms
+#   - services/fdir_slot_mgr
+#   - services/storage
+#   - services/autonomy_sandbox
 
 add_library(strata_services INTERFACE)
 add_library(strata::services ALIAS strata_services)

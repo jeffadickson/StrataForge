@@ -12,11 +12,9 @@ StrataForge/
 ├── docs/architecture/       # 01–07 foundational research, teardowns & flagship specs
 ├── manifests/               # Single-source-of-truth mission.toml schemas & examples
 ├── tools/strata-gen/        # Manifest static checker + C++20 / SV / TCL / XTCE generator
-├── hypervisor/              # [CLASS B TCB] Custom bare-metal Type-1 hypervisor & 8-call ABI
-├── middleware/              # [CLASS B SDK] Header-only 6-primitive C++20 STRATA-20 SDK
-├── services/
-│   ├── class_b/             # [CLASS B TCB] C&DH, CCSDS/SDLS Comms, Unified FdirEngine/SlotMgr
-│   └── class_c/             # [CLASS C] Zero-copy Data Products/CFDP Storage & Autonomy Sandbox
+├── hypervisor/              # Custom bare-metal Type-1 hypervisor & 8-call ABI
+├── middleware/              # Header-only 6-primitive C++20 STRATA-20 SDK
+├── services/                # Reusable flight services (cdh, comms, fdir_slot_mgr, storage, autonomy_sandbox)
 ├── rtl/                     # SystemVerilog 4 KB SCSR contract + Versal/Kintex DFX/XMPU shells
 ├── examples/                # Reference mission & host SIL targets
 └── tests/                   # C++20 unit tests, deterministic rule fuzzer (STest parity), Verilator
