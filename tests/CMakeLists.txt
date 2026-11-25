@@ -1,3 +1,4 @@
+# Middleware Core & Primitive Unit Tests
 add_executable(test_abi_and_types unit/test_abi_and_types.cpp)
 target_link_libraries(test_abi_and_types PRIVATE strata::middleware)
 add_test(NAME strata.unit.abi_and_types COMMAND test_abi_and_types)
@@ -18,6 +19,29 @@ add_executable(test_hw_and_runtime unit/test_hw_and_runtime.cpp)
 target_link_libraries(test_hw_and_runtime PRIVATE strata::middleware)
 add_test(NAME strata.unit.hw_and_runtime COMMAND test_hw_and_runtime)
 
+# Flight Services Unit & Fault-Injection Tests (F' v4 + cFS + PUS-C + ARINC + ScOSA)
+add_executable(test_comms_ccsds_sdls unit/test_comms_ccsds_sdls.cpp)
+target_link_libraries(test_comms_ccsds_sdls PRIVATE strata::services)
+add_test(NAME strata.unit.comms_ccsds_sdls COMMAND test_comms_ccsds_sdls)
+
+add_executable(test_cdh_services unit/test_cdh_services.cpp)
+target_link_libraries(test_cdh_services PRIVATE strata::services)
+add_test(NAME strata.unit.cdh_services COMMAND test_cdh_services)
+
+add_executable(test_fdir_and_scosa unit/test_fdir_and_scosa.cpp)
+target_link_libraries(test_fdir_and_scosa PRIVATE strata::services)
+add_test(NAME strata.unit.fdir_and_scosa COMMAND test_fdir_and_scosa)
+
+add_executable(test_storage_and_autonomy unit/test_storage_and_autonomy.cpp)
+target_link_libraries(test_storage_and_autonomy PRIVATE strata::services)
+add_test(NAME strata.unit.storage_and_autonomy COMMAND test_storage_and_autonomy)
+
+# Deterministic Seeded Rule-Based Fuzzer (F' STest parity)
+add_executable(test_rule_fuzzer rule_fuzzer/test_rule_fuzzer.cpp)
+target_link_libraries(test_rule_fuzzer PRIVATE strata::services)
+add_test(NAME strata.fuzzer.rule_engine COMMAND test_rule_fuzzer)
+
+# Single-Source-of-Truth Manifest Static Verification
 find_package(Python3 COMPONENTS Interpreter)
 if(Python3_Interpreter_FOUND)
     add_test(

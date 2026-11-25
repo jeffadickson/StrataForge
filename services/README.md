@@ -1,10 +1,20 @@
 # Flight Services (`services/`)
 
-Reusable zero-heap C++20 mission services achieving 100% JPL F' v4.x parity plus cFS, ECSS PUS-C, ARINC 653, and DLR ScOSA operational capabilities. Partition criticality (NASA Class B, C, or D) is configured per mission in `mission.toml` rather than hardcoded into the directory layout.
+Zero-heap, zero-vtable, zero-exception C++20 mission services providing **100% JPL F' v4.x parity** plus NASA cFS, ESA ECSS PUS-C, ARINC 653, and DLR ScOSA operational capabilities. Partition criticality (NASA Class B, C, or D) is configured per mission in `mission.toml`.
 
-## Modules
-- `cdh/` — `CmdRouter` (4-stage PUS `ST[01]`), `consteval` `TlmPacketizer` (`ST[04]` stats, `ST[14]` forwarding), `EventMgr`, `SeqEngine`, `MemDwell` (`MD`), `MemPatch` (`MM`), `SwChecksum` (`CS`), `SysMonitor`, `BuildManifest`.
-- `comms/` — Total-function CCSDS SPP / TC / TM / AOS / USLP parsers & framers (`Expected<View, WireErr>`), `SdlsEngine` (AES-GCM w/ HW offload hook), zero-copy `ComPipeline`.
-- `fdir_slot_mgr/` — Unified `FdirEngine` (cFS `LC` + PUS `ST[12]`/`ST[19]` + ARINC 653 HM + ScOSA failover), XilSEM/Scrubber upset correlation, authenticated DFX/AIE `SlotManager`.
-- `storage/` — Zero-copy `DpEngine` + `DpCatalog` (optional PL compression offload), 64-bit `FileService`, `CfdpEngine` (Class 1 & 2).
-- `autonomy_sandbox/` — Hardware-sandboxed Wasm-AOT / bounded script runner replacing in-process `WasmSequencer`.
+## Implemented Modules
+- **`comms/`** (`include/strata/services/comms/`)
+  - `ccsds.hpp` — Total-function CCSDS Space Packet & TC Transfer Frame parsers/framers (zero asserts on wire input), CRC-16-CCITT FECF, pluggable `SdlsEngine` with 64-frame sliding anti-replay window.
+  - `com_pipeline.hpp` — Priority-tiered `ComQueue` and idle-packet-filling `ComAggregator`.
+- **`cdh/`** (`include/strata/services/cdh/`)
+  - `cmd_service.hpp` — 4-stage ECSS PUS `ST[01]` `CmdService` with partition RBAC & SDLS enforcement.
+  - `telemetry.hpp` — `consteval`-safe `TlmPacketizer`, Welford online PUS `ST[04]` `StatsCollector`, and PUS `ST[14]` `ForwardingControl`.
+  - `sequencer.hpp` — Multi-slot CRC-32C `SeqEngine` (absolute/relative TAI steps + safe-mode abort).
+  - `flight_ops.hpp` — cFS Memory Dwell (`MD`), two-step authenticated Memory Patch (`MM`), background `SwChecksum` (`CS`), and `BuildManifestInfo`.
+- **`fdir_slot_mgr/`** (`include/strata/services/fdir/`)
+  - `fdir_engine.hpp` — Unified `FdirEngine`: debounced Watchpoints (`LC`/`ST[12]`), Actionpoints (`ST[19]`), ARINC 653 escalation ladder, Versal XilSEM / Kintex Scrubber CRAM frame-to-slot attribution, and DLR ScOSA spare-slot failover.
+- **`storage/`** (`include/strata/services/storage/`)
+  - `data_products.hpp` — Zero-copy 64 B `DpHeader` and 64-bit priority `DpCatalog` with high-water lower-priority eviction and resume offsets.
+  - `file_and_cfdp.hpp` — 64-bit partition-jailed `FileService`, authenticated DFX/PDI staging, and 64-bit CCSDS CFDP Class 1/2 missing-extent NAK tracker.
+- **`autonomy_sandbox/`** (`include/strata/services/autonomy/`)
+  - `sandbox_runner.hpp` — Isolated `AutonomySandbox` with hard step-budget preemption, read-only telemetry inputs, and strict command opcode allowlist gating.
