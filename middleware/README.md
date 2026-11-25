@@ -1,10 +1,27 @@
 # Middleware SDK (`middleware/`) — Header-Only C++20 STRATA-20 Core
 
-Zero-heap, zero-vtable, zero-exception C++20 primitives shared across Class B, C, and D partitions.
+Zero-heap, zero-vtable, zero-exception C++20 primitives (`-std=c++20 -fno-exceptions -fno-rtti -Werror -fstack-usage`) shared across all partitions.
 
-## Planned Modules (`include/strata/`)
-- `core/` — `types.hpp`, `Expected<T, E>`, C++20 `concepts`, static `QoS<...>`, `Fsm<...>`.
-- `ipc/` — `Blackboard<T, QoS>`, `SpscChannel<T, QoS>`, `EventRing<E, N>`, `ParamBank<T>`, `CriticalStore<T>`.
-- `data/` — `FrameDesc` (32 B), move-only `FrameLease<T, Pool>`, 1-to-N zero-copy `DataTopic<T, Pool, QoS>`.
-- `hw/` — Compile-time `mmio::Reg<Offset, Access, T>`, standard 4 KB `SCSR`, unified `SlotHandle<Spec>`.
-- `runtime/` — Zero-thread-explosion `PartitionRuntime`, unrolled `RateGroup<Hz>`, `PhasedSchedule`, static `CommandRoutes`.
+## Implemented Headers (`include/strata/`)
+- `middleware.hpp` — Single umbrella include for the entire STRATA-20 SDK.
+- `core/`
+  - `types.hpp` — `TaiTimestamp`, `DurationNs` + `_ns`/`_us`/`_ms`/`_s` literals, `GenId`, `SlotState`, `SlotCmd`, `EventSeverity`, `CmdStage`, `CmdResult`, `Status`, 32 B `FrameDesc`, 128 B `SpscHeader`.
+  - `expected.hpp` — Zero-exception, zero-heap `Expected<T, E>` (including `Expected<void, E>`).
+  - `crc32c.hpp` — Compile-time + runtime Castagnoli CRC-32C (`0x82F63B78`).
+  - `qos.hpp` — Compile-time static DDS QoS (`Durability`, `Reliability`, `Deadline`, `Liveliness`, `LeaseTimeout`, `History`).
+  - `concepts.hpp` — `WirePod`, `PowerOfTwo`, `DoorbellNotifier`, `TimeSource`, `RegisterTransport`, `InstrumentComponent`.
+  - `fsm.hpp` — Zero-allocation table-driven `Fsm<Context, StateEnum, EventEnum, N>` (FPP State Machine parity).
+- `ipc/`
+  - `blackboard.hpp` — Lock-free Seqlock `BlackboardStorage<T>`, `BlackboardWriter`, `BlackboardReader` (with `TransientLocal` & `Deadline` checks).
+  - `spsc_channel.hpp` — Cache-line-isolated lock-free `SpscRingStorage`, `SpscProducer`, `SpscConsumer` (generation counters, coalesced doorbells, bounded `drain_up_to`).
+  - `event_ring.hpp` — Bounded `EventWriter` with severity filtering, burst deduplication, and cooldown rate-capping.
+  - `param_bank.hpp` — Double-buffered CRC-32C `ParamBank<ParamT>` with staged validation, atomic commit, rollback, and SEU verification.
+  - `critical_store.hpp` — Ping-pong crash-atomic CRC-32C `CriticalStore<StateT>` (cFS `CDS` + DLR ScOSA checkpointing).
+- `data/`
+  - `frame_lease.hpp` — Atomic subscriber-bitmask `FramePool`, move-only RAII `FrameLease`, and move-only `ReadOnlyFrameView` with crash-safe lease reclamation.
+  - `data_topic.hpp` — True zero-copy 1-to-N `DataTopic` with mixed-criticality `Guaranteed` vs. `BestEffortDropOldest` QoS.
+- `hw/`
+  - `reg_map.hpp` — Compile-time `RO`/`WO`/`RW`/`RW1C` `mmio::Reg`, `DirectMmioTransport`, and `MockRegisterBank`.
+  - `slot_handle.hpp` — Standard 4 KB `SCSR` contract and unified spatial/DFX/AIE `SlotHandle<Transport>`.
+- `runtime/`
+  - `partition_runtime.hpp` — Zero-thread `CyclicScheduler` (`RateGroup` + `ActivePhaser` parity) and compile-time unique-opcode `CommandRouter`.
