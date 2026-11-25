@@ -120,7 +120,8 @@ public:
             const uint32_t s2 = seq_ref.load(std::memory_order_relaxed);
             if (s1 == s2) {
                 if constexpr (QoS.deadline.value_ns > 0U) {
-                    if (elapsed_since(now, sample.published_at) > QoS.deadline) {
+                    constexpr uint64_t kDeadlineNs = QoS.deadline.value_ns;
+                    if (elapsed_since(now, sample.published_at).ns() > kDeadlineNs) {
                         return Unexpected(Status::DeadlineMissed);
                     }
                 }

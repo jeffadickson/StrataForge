@@ -98,6 +98,12 @@ public:
 #endif
     }
 
+    void set_stage2_root(uint8_t pid, uint64_t root_pa) noexcept {
+        stage2_root_pa_[pid & 0xFU] = root_pa;
+    }
+    [[nodiscard]] uint64_t stage2_root(uint8_t pid) const noexcept {
+        return stage2_root_pa_[pid & 0xFU];
+    }
     [[nodiscard]] uint8_t  current_vmid() const noexcept { return current_vmid_; }
     [[nodiscard]] size_t   stage2_entry_count() const noexcept { return entry_count_; }
     [[nodiscard]] uint64_t last_pmc_cmd() const noexcept { return last_pmc_cmd_; }

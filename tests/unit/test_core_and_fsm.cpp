@@ -53,14 +53,14 @@ int test_expected_and_qos() {
     CHECK(*ok_val == 42);
     CHECK(ok_val.value_or(0) == 42);
 
-    strata::Expected<int, strata::Status> err_val(strata::Unexpected(strata::Status::Timeout));
+    strata::Expected<int, strata::Status> err_val{strata::Unexpected(strata::Status::Timeout)};
     CHECK(!err_val.has_value());
     CHECK(err_val.error() == strata::Status::Timeout);
     CHECK(err_val.value_or(99) == 99);
 
     strata::Expected<void, strata::Status> void_ok{};
     CHECK(void_ok.has_value());
-    strata::Expected<void, strata::Status> void_err(strata::Unexpected(strata::Status::Busy));
+    strata::Expected<void, strata::Status> void_err{strata::Unexpected(strata::Status::Busy)};
     CHECK(!void_err.has_value());
     CHECK(void_err.error() == strata::Status::Busy);
 

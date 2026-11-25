@@ -21,21 +21,13 @@ StrataForge/
 └── tests/                   # C++20 unit tests, deterministic rule fuzzer, Verilator HIL
 ```
 
-## Quickstart (Host SIL + Requirements & Manifest Validation)
+## Quickstart (Host SIL, Verilator Co-Sim & Flight Safety Audits)
 
 ```bash
-cmake --preset host-debug
+cmake --preset host-debug        # Also available: host-sanitizers, host-release, host-clang
 cmake --build --preset host-debug
-ctest --preset host-debug
-./build/host-debug/examples/dual_instrument_sil
-```
-
-For AddressSanitizer + UndefinedBehaviorSanitizer checks:
-
-```bash
-cmake --preset host-sanitizers
-cmake --build --preset host-sanitizers
-ctest --preset host-sanitizers
+ctest --preset host-debug        # 19 suites: unit, hypervisor, fuzzer, codegen, StrictDoc, Verilator HIL, mission sim & stack/zero-heap audit
+./build/host-debug/examples/versal_mission_flight_sim
 ```
 
 ## Core Middleware Primitives
@@ -47,6 +39,8 @@ ctest --preset host-sanitizers
 5. **`CriticalStore<T>`** — Ping-pong CRC-32C persistent RAM checkpoint store surviving warm resets, SEU restarts, and spare-slot failover
 6. **`SlotHandle<Spec>` & `RegMap`** — Compile-time-safe MMIO (`RO`/`WO`/`RW`/`RW1C`) and unified spatial / DFX / AIE hardware slot lifecycle (`SCSR`)
 
-## Formal Requirements (`requirements/`)
+## Formal Requirements & Flight Safety Gates
 
-All system, hypervisor, middleware, service, RTL, codegen, and verification requirements are authored in **StrictDoc** (`.sdoc`) under [`requirements/`](requirements/README.md) with full parent-child traceability verified automatically by `ctest`.
+- **StrictDoc Specifications** ([`requirements/`](requirements/README.md)): **84 / 84 requirements Implemented** (`0` orphans, `0` cycles), validated automatically by `tools/check_sdoc.py`.
+- **Static Stack-Usage & Zero-Heap Audit** ([`tools/check_flight_safety.py`](tools/check_flight_safety.py)): Enforces bounded per-function stack frames (`<= 4096 B`, zero unbounded dynamic stack) from GCC `.su` reports and verifies zero `malloc`/`free`/`operator new`/`__cxa_throw` references in compiled flight binaries.
+- **Continuous Integration** ([`.github/workflows/ci.yml`](.github/workflows/ci.yml)): Verifies GCC Debug, ASan+UBSan, Release, Clang++ C++20, Verilator `-Wall` RTL lint + Versal/Kintex co-simulation, and requirements traceability on every push.

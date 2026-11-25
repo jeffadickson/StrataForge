@@ -1,0 +1,54 @@
+name: StrataForge Flight CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  build-and-verify:
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        preset: [host-debug, host-sanitizers, host-release, host-clang]
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install toolchain and Verilator
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq cmake ninja-build g++ clang verilator python3
+
+      - name: Configure (${{ matrix.preset }})
+        run: cmake --preset ${{ matrix.preset }}
+
+      - name: Build (${{ matrix.preset }})
+        run: cmake --build --preset ${{ matrix.preset }}
+
+      - name: Run CTest (${{ matrix.preset }})
+        run: ctest --preset ${{ matrix.preset }} --output-on-failure
+
+  rtl-lint-and-traceability:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install Verilator
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq verilator python3
+
+      - name: Lint all SystemVerilog RTL with Verilator -Wall
+        run: |
+          verilator --lint-only -Wall -Irtl/common rtl/common/scsr_slave.sv
+          verilator --lint-only -Wall -Irtl/common rtl/common/sg_dma_shaper.sv
+          verilator --lint-only -Wall -Irtl/common rtl/common/scsr_slave.sv rtl/common/sg_dma_shaper.sv rtl/versal/versal_platform_shell.sv --top-module versal_platform_shell
+          verilator --lint-only -Wall -Irtl/common rtl/common/scsr_slave.sv rtl/common/sg_dma_shaper.sv rtl/kintex/kintex_platform_shell.sv --top-module kintex_platform_shell
+
+      - name: Validate StrictDoc Requirements Traceability Graph
+        run: python3 tools/check_sdoc.py requirements/ .

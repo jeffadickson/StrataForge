@@ -8,7 +8,7 @@
   "configurePresets": [
     {
       "name": "host-debug",
-      "displayName": "Host SIL Debug (C++20, Class B strict flags)",
+      "displayName": "Host SIL Debug (GCC C++20, Class B strict flags)",
       "generator": "Ninja",
       "binaryDir": "${sourceDir}/build/host-debug",
       "cacheVariables": {
@@ -34,6 +34,15 @@
       "binaryDir": "${sourceDir}/build/host-release",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Release"
+      }
+    },
+    {
+      "name": "host-clang",
+      "displayName": "Host SIL Clang++ C++20 (Class B strict flags)",
+      "inherits": "host-debug",
+      "binaryDir": "${sourceDir}/build/host-clang",
+      "cacheVariables": {
+        "CMAKE_CXX_COMPILER": "clang++"
       }
     },
     {
@@ -85,6 +94,10 @@
     {
       "name": "host-release",
       "configurePreset": "host-release"
+    },
+    {
+      "name": "host-clang",
+      "configurePreset": "host-clang"
     }
   ],
   "testPresets": [
@@ -98,6 +111,20 @@
     {
       "name": "host-sanitizers",
       "configurePreset": "host-sanitizers",
+      "output": {
+        "outputOnFailure": true
+      }
+    },
+    {
+      "name": "host-release",
+      "configurePreset": "host-release",
+      "output": {
+        "outputOnFailure": true
+      }
+    },
+    {
+      "name": "host-clang",
+      "configurePreset": "host-clang",
       "output": {
         "outputOnFailure": true
       }

@@ -112,3 +112,20 @@ if(verilator_FOUND)
     target_link_libraries(test_verilator_scsr_dma PRIVATE strata_verilated_rtl)
     add_test(NAME strata.hil.verilator_scsr_dma COMMAND test_verilator_scsr_dma)
 endif()
+
+# End-to-End Multi-Partition Mission Flight Integration & Static Safety Audit
+if(TARGET versal_mission_flight_sim)
+    add_test(NAME strata.integration.versal_mission_flight_sim COMMAND versal_mission_flight_sim)
+    if(Python3_Interpreter_FOUND)
+        add_test(
+            NAME strata.audit.flight_safety_stack_and_heap
+            COMMAND ${Python3_EXECUTABLE}
+                    ${CMAKE_SOURCE_DIR}/tools/check_flight_safety.py
+                    ${CMAKE_BINARY_DIR}
+                    --max-flight-stack-bytes 4096
+                    --skip-elf-on-asan
+                    --elf $<TARGET_FILE:dual_instrument_sil>
+                    --elf $<TARGET_FILE:versal_mission_flight_sim>
+        )
+    endif()
+endif()

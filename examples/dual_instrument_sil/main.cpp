@@ -112,8 +112,8 @@ static_assert(strata::InstrumentComponent<HyperspecInstrument>);
 } // namespace
 
 int main() {
-    // Hardware SCSR mock (Versal Spatial Slot 0)
-    strata::mmio::MockRegisterBank<8192U> scsr_bank{};
+    // Hardware SCSR mock & shared-memory backing placed in static .bss (bounded < 4 KB stack)
+    static strata::mmio::MockRegisterBank<8192U> scsr_bank{};
     scsr_bank.force_word(strata::hw::scsr::RegMagicVer::kOffset, strata::hw::scsr::kMagic);
     scsr_bank.force_word(strata::hw::scsr::RegManifestHashLo::kOffset,
                          static_cast<uint32_t>(kMissionManifestHash & 0xFFFF'FFFFULL));
@@ -123,20 +123,20 @@ int main() {
                          static_cast<uint32_t>(strata::SlotState::Active));
 
     strata::hw::SlotHandle slot(scsr_bank, 0U);
-    std::array<std::byte, 8U * 1024U> ddr_pool{};
-    SimPool  pool(ddr_pool, 0x0000'0008'0000'0000ULL);
-    SimTopic topic(pool);
+    static std::array<std::byte, 8U * 1024U> ddr_pool{};
+    static SimPool                           pool(ddr_pool, 0x0000'0008'0000'0000ULL);
+    static SimTopic                          topic(pool);
 
     auto sub_recorder = topic.add_subscriber(strata::kGuaranteedControlQoS);
     auto sub_ml       = topic.add_subscriber(strata::kBestEffortScienceQoS);
     if (!sub_recorder || !sub_ml) return 1;
 
-    strata::BlackboardStorage<HsiHk>         hk_mem{};
-    strata::BlackboardWriter<HsiHk>          hk_writer(hk_mem, strata::GenId{1U});
-    strata::BlackboardReader<HsiHk>          hk_reader(hk_mem);
-    strata::ParamBank<HsiParams>             params(HsiParams{});
-    strata::CriticalStoreStorage<HsiCheckpoint> cds_mem{};
-    strata::CriticalStore<HsiCheckpoint>     cds(cds_mem, kMissionManifestHash);
+    static strata::BlackboardStorage<HsiHk>         hk_mem{};
+    strata::BlackboardWriter<HsiHk>                 hk_writer(hk_mem, strata::GenId{1U});
+    strata::BlackboardReader<HsiHk>                 hk_reader(hk_mem);
+    strata::ParamBank<HsiParams>                    params(HsiParams{});
+    static strata::CriticalStoreStorage<HsiCheckpoint> cds_mem{};
+    strata::CriticalStore<HsiCheckpoint>            cds(cds_mem, kMissionManifestHash);
 
     HyperspecInstrument inst{slot, pool, topic, hk_writer, params, cds};
     if (inst.on_slot_ready(strata::GenId{1U}) != strata::Status::Ok) return 1;
