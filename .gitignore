@@ -1,0 +1,74 @@
+# Build directories (CMake / Ninja / Make / Meson)
+build/
+cmake-build-*/
+out/
+_build/
+*.o
+*.obj
+*.a
+*.lib
+*.so
+*.dylib
+*.dll
+*.exe
+*.elf
+*.bin
+*.hex
+*.map
+*.su
+*.d
+*.gcno
+*.gcda
+*.gcov
+compile_commands.json
+
+# CMake artifacts
+CMakeCache.txt
+CMakeFiles/
+cmake_install.cmake
+CTestTestfile.cmake
+Testing/
+Makefile
+
+# AMD / Xilinx Vivado, Vitis & DFX artifacts
+*.jou
+*.log
+*.str
+*.dcp
+*.bit
+*.pdi
+*.xsa
+*.xpr.bak
+.Xil/
+vivado*.jou
+vivado*.log
+webtalk*
+*.hw/
+*.ip_user_files/
+*.runs/
+*.sim/
+*.cache/
+*.gen/
+
+# Verilator / RTL simulation artifacts
+obj_dir/
+*.vcd
+*.fst
+*.ghw
+
+# Python / strata-gen tooling
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+.mypy_cache/
+
+# IDE & OS clutter
+.vscode/
+.idea/
+.cache/
+.DS_Store
+Thumbs.db
+*.swp
+*~
