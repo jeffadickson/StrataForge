@@ -1,0 +1,76 @@
+[mission]
+name = "versal_dual_instrument_demo"
+target_silicon = "XQRVC1902"
+minor_frame_us = 10_000
+major_frame_us = 1_000_000
+
+[[partitions]]
+id = "cdh_b"
+criticality = "CLASS_B"
+cpu = "APU_CORE0"
+budget_us = 2_000
+cds_bytes = 16_384
+
+[[partitions]]
+id = "fdir_slot_mgr_b"
+criticality = "CLASS_B"
+cpu = "RPU_LOCKSTEP"
+budget_us = 2_000
+cds_bytes = 16_384
+
+[[partitions]]
+id = "storage_c"
+criticality = "CLASS_C"
+cpu = "APU_CORE1"
+budget_us = 2_500
+cds_bytes = 32_768
+
+[[partitions]]
+id = "hyperspec_d"
+criticality = "CLASS_D"
+cpu = "APU_CORE1"
+budget_us = 2_000
+cds_bytes = 8_192
+
+[[partitions]]
+id = "sar_dfx_d"
+criticality = "CLASS_D"
+cpu = "APU_CORE1"
+budget_us = 1_500
+cds_bytes = 8_192
+
+[[hw_slots]]
+slot_id = 0
+name = "hyperspec_spatial"
+mode = "PL_SPATIAL"
+owner_partition = "hyperspec_d"
+scsr_phys_addr = 0xA000_0000
+noc_routing_group = "SCIENCE_BEST_EFFORT"
+quiesce_timeout_us = 500
+
+[[hw_slots]]
+slot_id = 1
+name = "sar_dynamic"
+mode = "PL_DFX"
+owner_partition = "sar_dfx_d"
+scsr_phys_addr = 0xA001_0000
+noc_routing_group = "SCIENCE_BEST_EFFORT"
+quiesce_timeout_us = 500
+
+[[hw_slots]]
+slot_id = 2
+name = "aie_denoise"
+mode = "VERSAL_AIE"
+owner_partition = "hyperspec_d"
+aie_columns = [4, 5]
+noc_routing_group = "SCIENCE_BEST_EFFORT"
+quiesce_timeout_us = 250
+
+[[data_pools]]
+name = "hsi_frame_pool"
+phys_base = 0x0000_0008_0000_0000
+slot_count = 32
+slot_bytes = 4_194_304
+writer_slot = 0
+readers = ["storage_c"]
+lease_timeout_ms = 50

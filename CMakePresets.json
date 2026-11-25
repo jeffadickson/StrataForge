@@ -1,0 +1,106 @@
+{
+  "version": 6,
+  "cmakeMinimumRequired": {
+    "major": 3,
+    "minor": 25,
+    "patch": 0
+  },
+  "configurePresets": [
+    {
+      "name": "host-debug",
+      "displayName": "Host SIL Debug (C++20, Class B strict flags)",
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/build/host-debug",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
+        "STRATA_BUILD_TESTS": "ON",
+        "STRATA_BUILD_EXAMPLES": "ON",
+        "STRATA_CLASS_B_STRICT": "ON"
+      }
+    },
+    {
+      "name": "host-sanitizers",
+      "displayName": "Host SIL + ASan/UBSan",
+      "inherits": "host-debug",
+      "binaryDir": "${sourceDir}/build/host-sanitizers",
+      "cacheVariables": {
+        "STRATA_ENABLE_SANITIZERS": "ON"
+      }
+    },
+    {
+      "name": "host-release",
+      "displayName": "Host SIL Release (Optimized)",
+      "inherits": "host-debug",
+      "binaryDir": "${sourceDir}/build/host-release",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release"
+      }
+    },
+    {
+      "name": "versal-a72-baremetal",
+      "displayName": "Versal Cortex-A72 Bare-Metal (EL2/EL1)",
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/build/versal-a72",
+      "toolchainFile": "${sourceDir}/cmake/toolchains/aarch64-versal-baremetal.cmake",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "RelWithDebInfo",
+        "STRATA_BUILD_TESTS": "OFF",
+        "STRATA_CLASS_B_STRICT": "ON"
+      }
+    },
+    {
+      "name": "versal-r5-baremetal",
+      "displayName": "Versal Lockstep Cortex-R5F Bare-Metal",
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/build/versal-r5",
+      "toolchainFile": "${sourceDir}/cmake/toolchains/armr5-versal-baremetal.cmake",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "RelWithDebInfo",
+        "STRATA_BUILD_TESTS": "OFF",
+        "STRATA_CLASS_B_STRICT": "ON"
+      }
+    },
+    {
+      "name": "kintex-microblaze",
+      "displayName": "Kintex TMR MicroBlaze Bare-Metal",
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/build/kintex-mb",
+      "toolchainFile": "${sourceDir}/cmake/toolchains/microblaze-kintex.cmake",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "RelWithDebInfo",
+        "STRATA_BUILD_TESTS": "OFF",
+        "STRATA_CLASS_B_STRICT": "ON"
+      }
+    }
+  ],
+  "buildPresets": [
+    {
+      "name": "host-debug",
+      "configurePreset": "host-debug"
+    },
+    {
+      "name": "host-sanitizers",
+      "configurePreset": "host-sanitizers"
+    },
+    {
+      "name": "host-release",
+      "configurePreset": "host-release"
+    }
+  ],
+  "testPresets": [
+    {
+      "name": "host-debug",
+      "configurePreset": "host-debug",
+      "output": {
+        "outputOnFailure": true
+      }
+    },
+    {
+      "name": "host-sanitizers",
+      "configurePreset": "host-sanitizers",
+      "output": {
+        "outputOnFailure": true
+      }
+    }
+  ]
+}

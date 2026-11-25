@@ -1,0 +1,58 @@
+[mission]
+name = "kintex_dual_instrument_demo"
+target_silicon = "XQRKU060"
+minor_frame_us = 20_000
+major_frame_us = 1_000_000
+
+[[partitions]]
+id = "cdh_b"
+criticality = "CLASS_B"
+cpu = "MB_TMR_0"
+budget_us = 6_000
+cds_bytes = 8_192
+
+[[partitions]]
+id = "fdir_slot_mgr_b"
+criticality = "CLASS_B"
+cpu = "EXT_RADHARD_SUPERVISOR"
+budget_us = 4_000
+cds_bytes = 8_192
+
+[[partitions]]
+id = "inst_spatial_c"
+criticality = "CLASS_C"
+cpu = "MB_PAYLOAD_1"
+budget_us = 5_000
+cds_bytes = 4_096
+
+[[partitions]]
+id = "inst_dfx_d"
+criticality = "CLASS_D"
+cpu = "MB_PAYLOAD_1"
+budget_us = 5_000
+cds_bytes = 4_096
+
+[[hw_slots]]
+slot_id = 0
+name = "lidar_spatial"
+mode = "PL_SPATIAL"
+owner_partition = "inst_spatial_c"
+scsr_phys_addr = 0x44A0_0000
+quiesce_timeout_us = 500
+
+[[hw_slots]]
+slot_id = 1
+name = "sdr_dynamic"
+mode = "PL_DFX"
+owner_partition = "inst_dfx_d"
+scsr_phys_addr = 0x44A1_0000
+quiesce_timeout_us = 500
+
+[[data_pools]]
+name = "lidar_frame_pool"
+phys_base = 0x8000_0000
+slot_count = 16
+slot_bytes = 1_048_576
+writer_slot = 0
+readers = ["cdh_b"]
+lease_timeout_ms = 100
