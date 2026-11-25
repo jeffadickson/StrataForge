@@ -1,0 +1,197 @@
+[DOCUMENT]
+TITLE: StrataForge Communications Services Requirements Specification
+UID: STRATA-DOC-COM
+PREFIX: STRATA-COM-
+
+[GRAMMAR]
+ELEMENTS:
+- TAG: REQUIREMENT
+  FIELDS:
+  - TITLE: UID
+    TYPE: String
+    REQUIRED: True
+  - TITLE: STATUS
+    TYPE: String
+    REQUIRED: True
+  - TITLE: TITLE
+    TYPE: String
+    REQUIRED: True
+  - TITLE: STATEMENT
+    TYPE: String
+    REQUIRED: True
+  - TITLE: RATIONALE
+    TYPE: String
+    REQUIRED: True
+  - TITLE: VERIFICATION_METHOD
+    TYPE: String
+    REQUIRED: True
+  - TITLE: ARTIFACT
+    TYPE: String
+    REQUIRED: False
+  RELATIONS:
+  - TYPE: Parent
+
+[[SECTION]]
+TITLE: CCSDS Framing, Link Security, and Downlink Pipeline
+
+[REQUIREMENT]
+UID: STRATA-COM-001
+STATUS: Implemented
+TITLE: Total-Function Zero-Assert Wire Parsers
+STATEMENT: >>>
+Every uplink deframer and wire parser shall operate as a total function returning Expected<View, WireErr> over bounds-checked std::span<const std::byte>, rejecting truncated, malformed, or out-of-range frames cleanly without asserting, trapping, or leaking buffers.
+<<<
+RATIONALE: >>>
+Malformed telecommand frames or RF bit-errors must never trigger denial-of-service resets or memory corruption in flight communications software.
+<<<
+VERIFICATION_METHOD: Test
+ARTIFACT: services/comms/include/strata/services/comms/ccsds.hpp
+RELATIONS:
+- TYPE: Parent
+  VALUE: STRATA-SYS-003
+
+[REQUIREMENT]
+UID: STRATA-COM-002
+STATUS: Implemented
+TITLE: CCSDS Space Packet Protocol Framer and Deframer
+STATEMENT: >>>
+The communications service shall frame and deframe CCSDS 133.0-B-2 Space Packets supporting 11-bit APIDs, 14-bit sequence counts, TC/TM type flags, secondary header flags, and zero-copy payload spans.
+<<<
+RATIONALE: >>>
+Standard CCSDS Space Packets ensure direct interoperability with ground stations, flight recorders, and multi-instrument payloads.
+<<<
+VERIFICATION_METHOD: Test
+ARTIFACT: services/comms/include/strata/services/comms/ccsds.hpp
+RELATIONS:
+- TYPE: Parent
+  VALUE: STRATA-SYS-005
+
+[REQUIREMENT]
+UID: STRATA-COM-003
+STATUS: Implemented
+TITLE: CCSDS Telecommand Transfer Frame with CRC-16-CCITT FECF
+STATEMENT: >>>
+The communications service shall parse and construct CCSDS 232.0-B-4 Telecommand Transfer Frames, validating version, declared frame length, SCID, VCID, bypass/control flags, and CRC-16-CCITT Frame Error Control Field (FECF) before exposing the data field.
+<<<
+RATIONALE: >>>
+Mandatory FECF validation prevents noisy uplink bit flips from propagating into command decoding.
+<<<
+VERIFICATION_METHOD: Test
+ARTIFACT: services/comms/include/strata/services/comms/ccsds.hpp
+RELATIONS:
+- TYPE: Parent
+  VALUE: STRATA-SYS-003
+
+[REQUIREMENT]
+UID: STRATA-COM-004
+STATUS: Planned
+TITLE: CCSDS TM, AOS, and USLP Downlink Transfer Framers
+STATEMENT: >>>
+The communications service shall provide configurable downlink transfer framers supporting CCSDS TM (132.0-B-3), AOS (732.0-B-4), and USLP (732.1-B-2) transfer frames with master/virtual channel frame counters, first-header pointers, and optional hardware FECF/coding offload.
+<<<
+RATIONALE: >>>
+High-rate instrument payloads require AOS and USLP framing in addition to classic TM transfer frames for optical and Ka-band links.
+<<<
+VERIFICATION_METHOD: Test
+ARTIFACT: services/comms/include/strata/services/comms/
+RELATIONS:
+- TYPE: Parent
+  VALUE: STRATA-SYS-006
+
+[REQUIREMENT]
+UID: STRATA-COM-005
+STATUS: Planned
+TITLE: Byte-Stream Frame Accumulator and Sync Resynchronization
+STATEMENT: >>>
+The communications service shall provide a bounded zero-heap FrameAccumulator that extracts complete transfer frames from raw byte streams (UART, SpaceWire, RF modem) using Attached Sync Marker (ASM) search and bounded resynchronization recovery on corrupted headers.
+<<<
+RATIONALE: >>>
+Continuous radio and serial links deliver unaligned byte streams that require deterministic frame boundary recovery after signal dropouts.
+<<<
+VERIFICATION_METHOD: Test
+ARTIFACT: services/comms/include/strata/services/comms/
+RELATIONS:
+- TYPE: Parent
+  VALUE: STRATA-SYS-003
+
+[REQUIREMENT]
+UID: STRATA-COM-006
+STATUS: Implemented
+TITLE: Space Data Link Security Engine with Anti-Replay Window
+STATEMENT: >>>
+The communications service shall implement CCSDS 355.0-B-2 Space Data Link Security (SdlsEngine) over a pluggable SdlsCryptoBackend concept (supporting Versal PMC or PL hardware AES-GCM offload), enforcing constant-time tag verification and a 64-sequence sliding anti-replay window updated only after cryptographic authentication succeeds.
+<<<
+RATIONALE: >>>
+Authenticated encryption with post-authentication anti-replay window commits protects spacecraft telecommanding against spoofing, replay, and window-poisoning denial-of-service attacks.
+<<<
+VERIFICATION_METHOD: Test
+ARTIFACT: services/comms/include/strata/services/comms/ccsds.hpp
+RELATIONS:
+- TYPE: Parent
+  VALUE: STRATA-SYS-003
+
+[REQUIREMENT]
+UID: STRATA-COM-007
+STATUS: Implemented
+TITLE: Strict Priority-Tiered Downlink ComQueue
+STATEMENT: >>>
+The communications service shall provide a fixed-capacity ComQueue with strict priority tiers (CriticalHk > Events > CmdAck > Cfdp > BulkDp) and per-tier overflow drop counters so high-volume science traffic can never starve critical housekeeping or command acknowledgments.
+<<<
+RATIONALE: >>>
+Strict priority queuing guarantees operator visibility and spacecraft health telemetry even during saturated science downlinks.
+<<<
+VERIFICATION_METHOD: Test
+ARTIFACT: services/comms/include/strata/services/comms/com_pipeline.hpp
+RELATIONS:
+- TYPE: Parent
+  VALUE: STRATA-SYS-003
+
+[REQUIREMENT]
+UID: STRATA-COM-008
+STATUS: Implemented
+TITLE: Fixed-Frame ComAggregator with CCSDS Idle Packet Fill
+STATEMENT: >>>
+The communications service shall provide a ComAggregator packing variable-length Space Packets into fixed-size transfer frame data fields and filling residual bytes with valid CCSDS Idle Packets (APID 0x7FF), with optional packet spanning across consecutive transfer frames.
+<<<
+RATIONALE: >>>
+Fixed-length RF transfer frames require deterministic idle padding and packet packing to maintain continuous downlink modulation without wasting link bandwidth.
+<<<
+VERIFICATION_METHOD: Test
+ARTIFACT: services/comms/include/strata/services/comms/com_pipeline.hpp
+RELATIONS:
+- TYPE: Parent
+  VALUE: STRATA-SYS-006
+
+[REQUIREMENT]
+UID: STRATA-COM-009
+STATUS: Planned
+TITLE: Link Back-Pressure ComRetry and Zero-Copy ComTee Recorder Tap
+STATEMENT: >>>
+The communications service shall provide a bounded ComRetry back-pressure adapter for busy radio drivers and a zero-copy ComTee tap that mirrors uplink/downlink FrameLease descriptors to an onboard flight recorder without copying packet payloads.
+<<<
+RATIONALE: >>>
+Decoupled retry handling prevents silent packet drops on bursty radio interfaces while zero-copy tee logging provides complete post-pass anomaly diagnostics.
+<<<
+VERIFICATION_METHOD: Test
+ARTIFACT: services/comms/include/strata/services/comms/
+RELATIONS:
+- TYPE: Parent
+  VALUE: STRATA-SYS-006
+
+[REQUIREMENT]
+UID: STRATA-COM-010
+STATUS: Planned
+TITLE: Multi-Board InterNodeBridge Transport
+STATEMENT: >>>
+The communications service shall provide a zero-heap InterNodeBridge framing control rings and descriptor transfers across physical multi-board links (SpaceWire, SpaceFibre, MIL-STD-1553, Ethernet, or PCIe DMA) for distributed spacecraft avionics.
+<<<
+RATIONALE: >>>
+Multi-board spacecraft architectures require transparent bridging between separate FPGA/OBC nodes while preserving strong typing and generation validation.
+<<<
+VERIFICATION_METHOD: Demonstration
+ARTIFACT: services/comms/include/strata/services/comms/
+RELATIONS:
+- TYPE: Parent
+  VALUE: STRATA-SYS-002
+
+[[/SECTION]]

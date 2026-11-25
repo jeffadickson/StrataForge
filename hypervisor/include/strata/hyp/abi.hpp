@@ -31,7 +31,7 @@ enum class SlotOpCode : uint32_t {
     AieColumnLoad  = 5U,
 };
 
-/// Privileged partition lifecycle actions (ARINC 653 HM + Oxide Hubris generation restart).
+/// Privileged partition lifecycle actions (warm/cold restart with generation increment).
 enum class PartCtlOp : uint32_t {
     Halt        = 0U,
     WarmRestart = 1U, // Preserves CriticalStore<T>, scrubs stack/.bss, increments GenId

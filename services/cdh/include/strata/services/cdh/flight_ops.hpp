@@ -20,8 +20,8 @@ struct MemoryRegionRule {
     bool      enabled{false};
 };
 
-/// On-orbit Memory Dwell (cFS MD) + Authenticated Two-Step Memory Patch (cFS MM) +
-/// Background Software Checksum Scrubber (cFS CS).
+/// On-orbit Memory Dwell, authenticated two-step Memory Patch, and background
+/// software checksum scrubbing over static code/data segments.
 template <size_t MaxRegions = 16U, size_t MaxChecksumSegments = 8U>
 class FlightMemoryOps {
 public:
@@ -40,7 +40,7 @@ public:
         return Status::Full;
     }
 
-    /// cFS MD (Memory Dwell): safely sample an authorized address range into telemetry buffer.
+    /// Memory Dwell: safely sample an authorized address range into a telemetry buffer.
     [[nodiscard]] Expected<size_t, Status>
     dwell_read(uintptr_t addr, size_t len, std::span<std::byte> dst) const noexcept {
         if (len == 0U || dst.size() < len) {
@@ -53,7 +53,7 @@ public:
         return len;
     }
 
-    /// cFS MM Step 1: Arm a surgical patch (verifies write allowlist + expected CRC before arming).
+    /// Memory Patch Step 1: Arm a surgical patch (verifies write allowlist + expected CRC).
     [[nodiscard]] Status arm_patch(uintptr_t addr, std::span<const std::byte> data,
                                    uint32_t expected_crc) noexcept {
         if (data.empty() || data.size() > kMaxPatchBytes) {
@@ -73,7 +73,7 @@ public:
         return Status::Ok;
     }
 
-    /// cFS MM Step 2: Execute the armed patch only if CRC matches arm token.
+    /// Memory Patch Step 2: Execute the armed patch only if confirm CRC matches arm token.
     [[nodiscard]] Status commit_patch(uint32_t confirm_crc) noexcept {
         if (!armed_patch_.armed) {
             return Status::PreconditionFailed;
@@ -91,7 +91,7 @@ public:
         return Status::Ok;
     }
 
-    /// cFS CS (Background Checksum): register immutable .text / .rodata / table segment to scrub.
+    /// Background Checksum: register immutable .text / .rodata / table segment to scrub.
     [[nodiscard]] Status register_checksum_segment(uint16_t seg_id,
                                                    std::span<const std::byte> segment) noexcept {
         for (auto& s : segments_) {
@@ -165,7 +165,7 @@ private:
     uint32_t                                           scrub_mismatches_{0U};
 };
 
-/// F' Svc::Version + Live FPGA Manifest Identity Reporter.
+/// Build Version & Live FPGA Manifest Identity Reporter.
 struct BuildManifestInfo {
     uint64_t manifest_hash{0U};
     uint32_t sw_git_sha_short{0U};

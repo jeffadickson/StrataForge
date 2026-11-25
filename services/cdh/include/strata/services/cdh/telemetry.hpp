@@ -14,7 +14,7 @@
 
 namespace strata::services::cdh {
 
-/// ESA PUS ST[14] Real-Time Forwarding Mode per telemetry APID.
+/// Real-Time Telemetry Forwarding Mode per APID.
 enum class ForwardMode : uint8_t {
     Muted        = 0U,
     StoreOnly    = 1U,
@@ -22,7 +22,7 @@ enum class ForwardMode : uint8_t {
     LiveAndStore = 3U,
 };
 
-/// ESA PUS ST[14] Dynamic Forwarding Control Table.
+/// Dynamic Telemetry Forwarding Control Table.
 template <size_t MaxEntries = 32U>
 class ForwardingControl {
 public:
@@ -70,9 +70,9 @@ private:
     std::array<Entry, MaxEntries> entries_{};
 };
 
-/// Compile-time-verified CCSDS Telemetry Packetizer (kills CVE-2026-92159 forever).
+/// Compile-time-verified CCSDS Telemetry Packetizer.
 /// Exact byte layout of every HK snapshot is statically checked at compile time —
-/// zero runtime serialized-value overflow across adjacent packet fields is possible!
+/// zero runtime serialized-value overflow across adjacent packet fields is possible.
 template <uint16_t Apid, WirePod HkStruct>
 class TlmPacketizer {
 public:
@@ -113,8 +113,8 @@ private:
     uint16_t seq_count_{0U};
 };
 
-/// ESA PUS ST[04] Parameter Statistics Reporting (Welford's online algorithm in O(1) RAM).
-/// Summarizes 100 Hz thermal/power/jitter signals into compact {min, max, mean, variance} reports.
+/// On-Board Parameter Statistics Collector (Welford's online algorithm in O(1) RAM).
+/// Summarizes high-rate thermal/power/jitter signals into compact {min, max, mean, variance} reports.
 struct ParamStatsSummary {
     double   min_val{0.0};
     double   max_val{0.0};

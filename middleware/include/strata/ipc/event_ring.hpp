@@ -26,7 +26,7 @@ struct EventRecord {
 static_assert(WirePod<EventRecord>, "EventRecord must be WirePod");
 
 /// Per-partition bounded EventRing with severity filtering, burst deduplication, and cooldown.
-/// Eliminates F' ActiveLogger/EventManager storm overflows during anomalies.
+/// Prevents central telemetry/event queue overflows during anomaly floods.
 template <size_t Capacity, size_t MaxTrackedIds = 16U>
     requires PowerOfTwo<Capacity>
 class EventWriter {
@@ -38,7 +38,7 @@ public:
           partition_id_(partition_id),
           cooldown_(cooldown) {}
 
-    /// Enable or disable specific severity levels at runtime (F' EventSeverityFilter parity).
+    /// Enable or disable specific severity levels at runtime via bitmask.
     void set_severity_mask(uint8_t mask) noexcept { severity_mask_ = mask; }
 
     [[nodiscard]] bool is_severity_enabled(EventSeverity sev) const noexcept {

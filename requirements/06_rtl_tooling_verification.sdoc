@@ -1,0 +1,255 @@
+[DOCUMENT]
+TITLE: StrataForge Hardware RTL, Code Generation, and Verification Requirements Specification
+UID: STRATA-DOC-RTV
+PREFIX: STRATA-RTL-
+
+[GRAMMAR]
+ELEMENTS:
+- TAG: REQUIREMENT
+  FIELDS:
+  - TITLE: UID
+    TYPE: String
+    REQUIRED: True
+  - TITLE: STATUS
+    TYPE: String
+    REQUIRED: True
+  - TITLE: TITLE
+    TYPE: String
+    REQUIRED: True
+  - TITLE: STATEMENT
+    TYPE: String
+    REQUIRED: True
+  - TITLE: RATIONALE
+    TYPE: String
+    REQUIRED: True
+  - TITLE: VERIFICATION_METHOD
+    TYPE: String
+    REQUIRED: True
+  - TITLE: ARTIFACT
+    TYPE: String
+    REQUIRED: False
+  RELATIONS:
+  - TYPE: Parent
+
+[[SECTION]]
+TITLE: Shared-FPGA Hardware Shell and RTL Contracts
+
+[REQUIREMENT]
+UID: STRATA-RTL-001
+STATUS: Partially Implemented
+TITLE: Standardized 4 KB AXI4-Lite SCSR Hardware Register Contract
+STATEMENT: >>>
+Every static spatial and dynamic DFX programmable logic slot shall expose a standardized 4 KB AXI4-Lite Slot Control and Status Register (SCSR) block at offset 0x0000 whose register offsets, magic signature (0x53545241), 64-bit MANIFEST_HASH, SlotState, SlotCmd, and RW1C fault bits match middleware/include/strata/hw/slot_handle.hpp bit-for-bit.
+<<<
+RATIONALE: >>>
+A single binary-locked SCSR contract guarantees uniform software bring-up, watchdog management, and fault handling across heterogeneous instruments.
+<<<
+VERIFICATION_METHOD: Test
+ARTIFACT: rtl/common/scsr_defs.svh
+RELATIONS:
+- TYPE: Parent
+  VALUE: STRATA-SYS-002
+
+[REQUIREMENT]
+UID: STRATA-RTL-002
+STATUS: Planned
+TITLE: Autonomous Hardware Slot Watchdog and 1PPS TAI Timestamp Strobe
+STATEMENT: >>>
+The SCSR RTL wrapper shall implement a hardware watchdog counter that autonomously quiesces slot DMA and transitions the slot to Standby if unserviced by its owning partition, alongside a global 1PPS TAI hardware strobe latching nanosecond timestamps directly at sensor capture.
+<<<
+RATIONALE: >>>
+Hardware watchdogs bound failure response time even if a guest partition halts completely, while hardware TAI strobes eliminate software scheduling jitter from science timestamps.
+<<<
+VERIFICATION_METHOD: Test
+ARTIFACT: rtl/common/
+RELATIONS:
+- TYPE: Parent
+  VALUE: STRATA-SYS-003
+
+[REQUIREMENT]
+UID: STRATA-RTL-003
+STATUS: Planned
+TITLE: Scatter-Gather 32-Byte Descriptor DMA and Credit-Based Bandwidth Shaper
+STATEMENT: >>>
+The hardware shell shall provide a lightweight scatter-gather DMA engine consuming and producing 32-byte FrameDesc rings directly in XMPU-scoped DDR4/HBM pools, guarded by hardware credit-based NoC/AXI rate shaping so payload slots cannot saturate Class B memory bandwidth.
+<<<
+RATIONALE: >>>
+Hardware descriptor rings eliminate CPU memcpy while credit shaping guarantees bounded worst-case memory latency for flight-critical partitions.
+<<<
+VERIFICATION_METHOD: Test
+ARTIFACT: rtl/common/
+RELATIONS:
+- TYPE: Parent
+  VALUE: STRATA-SYS-006
+
+[REQUIREMENT]
+UID: STRATA-RTL-004
+STATUS: Planned
+TITLE: Versal Platform Shell (XilSEM, NoC Isolation, NoC INI DFX, and AIE)
+STATEMENT: >>>
+The Versal hardware shell targeting XQRVC1902 and XQRVE2102 shall integrate PMC XilSEM scrubbing with automatic post-DFX reinitialization, NoC EXCLUSIVE_ROUTING_GROUP isolation for critical paths, NoC INI hardware quiescing for dynamic DFX slots, and isolated AI Engine column partitioning.
+<<<
+RATIONALE: >>>
+Leveraging Versal hardened PMC, NoC, and AIE isolation primitives minimizes PL LUT overhead while enforcing hardware-backed mixed-criticality separation.
+<<<
+VERIFICATION_METHOD: Demonstration
+ARTIFACT: rtl/versal/
+RELATIONS:
+- TYPE: Parent
+  VALUE: STRATA-SYS-002
+
+[REQUIREMENT]
+UID: STRATA-RTL-005
+STATUS: Planned
+TITLE: Kintex Platform Shell (External Scrubber, Selective TMR, Abstract Shell DFX)
+STATEMENT: >>>
+The Kintex hardware shell targeting XQRKU060 and UltraScale+ shall integrate selective Triple Modular Redundancy (TMR) on persistent-critical static bus arbiters and link state machines, Vivado IDF/Abstract Shell spatial fences, DFX AXI Shutdown Manager plus DFX Decoupler isolation, and DMA-fed ICAPE3 partial reconfiguration supervised by an external rad-hard monitor.
+<<<
+RATIONALE: >>>
+Kintex lacks Versal's hardened PMC and NoC, requiring external rad-hard scrubbing/supervision and selective-TMR static infrastructure to achieve Class B isolation.
+<<<
+VERIFICATION_METHOD: Demonstration
+ARTIFACT: rtl/kintex/
+RELATIONS:
+- TYPE: Parent
+  VALUE: STRATA-SYS-002
+
+[[/SECTION]]
+
+[[SECTION]]
+TITLE: Single-Source-of-Truth Manifest Tooling (strata-gen)
+
+[REQUIREMENT]
+UID: STRATA-GEN-001
+STATUS: Partially Implemented
+TITLE: Declarative Mission Manifest and CCSDS SEDS Datasheet Support
+STATEMENT: >>>
+The strata-gen tool shall parse a declarative mission.toml manifest (and optional CCSDS SEDS device datasheets) specifying partitions, criticality classes, CPU time budgets, DDR buffer pools, hardware slots, heterogeneous CPU/PL/AIE pipeline DAGs, and wire/register schemas with engineering units and calibration curves.
+<<<
+RATIONALE: >>>
+Declaring cross-domain boundaries in one human-readable manifest eliminates manual header, register, and ground-database duplication.
+<<<
+VERIFICATION_METHOD: Test
+ARTIFACT: tools/strata-gen/strata_gen.py
+RELATIONS:
+- TYPE: Parent
+  VALUE: STRATA-SYS-005
+
+[REQUIREMENT]
+UID: STRATA-GEN-002
+STATUS: Implemented
+TITLE: Compile-Time Static Isolation, Overlap, and Schedulability Proofs
+STATEMENT: >>>
+Before emitting any build artifacts, strata-gen shall mathematically verify that minor/major frame timing is integral, per-CPU partition time budgets do not exceed minor_frame_us, physical DDR pools are 4 KB aligned with power-of-two slot counts and zero address overlap, and no Class C/D slot references a CRITICAL_EXCL NoC routing group, computing the canonical 64-bit MANIFEST_HASH.
+<<<
+RATIONALE: >>>
+Catching memory overlaps, over-subscribed CPU schedules, and NoC criticality leaks at build time eliminates entire classes of integration faults before hardware bring-up.
+<<<
+VERIFICATION_METHOD: Test
+ARTIFACT: tools/strata-gen/strata_gen.py
+RELATIONS:
+- TYPE: Parent
+  VALUE: STRATA-SYS-005
+
+[REQUIREMENT]
+UID: STRATA-GEN-003
+STATUS: Planned
+TITLE: Synchronized Multi-Domain Code, Linker, and Hardware Artifact Generation
+STATEMENT: >>>
+From a validated manifest, strata-gen shall atomically emit C++20 ICD headers and ROM command/telemetry tables, hypervisor partition and schedule tables, per-partition linker scripts, SystemVerilog scsr_pkg.sv register packages, and Vivado XMPU/SMMU/NoC QoS TCL constraint scripts stamped with the identical MANIFEST_HASH.
+<<<
+RATIONALE: >>>
+Atomic multi-domain generation guarantees bit-exact synchronization across hypervisor, flight C++20 software, and synthesized FPGA bitstreams.
+<<<
+VERIFICATION_METHOD: Test
+ARTIFACT: tools/strata-gen/
+RELATIONS:
+- TYPE: Parent
+  VALUE: STRATA-SYS-005
+
+[REQUIREMENT]
+UID: STRATA-GEN-004
+STATUS: Planned
+TITLE: Automated Ground Command and Telemetry Dictionary Emission
+STATEMENT: >>>
+From the same validated manifest, strata-gen shall emit industry-standard CCSDS XTCE XML dictionaries and generic JSON command/telemetry/event/data-product dictionaries for ground data systems.
+<<<
+RATIONALE: >>>
+Auto-generated XTCE and JSON dictionaries keep mission operations tooling lock-stepped with every flight build automatically.
+<<<
+VERIFICATION_METHOD: Test
+ARTIFACT: tools/strata-gen/
+RELATIONS:
+- TYPE: Parent
+  VALUE: STRATA-SYS-005
+
+[[/SECTION]]
+
+[[SECTION]]
+TITLE: Verification, Fuzzing, Co-Simulation, and Requirements Traceability
+
+[REQUIREMENT]
+UID: STRATA-VER-001
+STATUS: Implemented
+TITLE: Strict Static Analysis, Sanitizer, and Stack-Usage Verification
+STATEMENT: >>>
+Every StrataForge CI build shall compile all targets with zero warnings under strict C++20 safety flags (-fno-exceptions -fno-rtti -Werror -fstack-usage) across Debug, AddressSanitizer plus UndefinedBehaviorSanitizer, and optimized Release presets.
+<<<
+RATIONALE: >>>
+Continuous multi-preset sanitizer and stack-usage checks detect undefined behavior, sign conversions, and unbounded stack growth immediately upon commit.
+<<<
+VERIFICATION_METHOD: Test
+ARTIFACT: CMakePresets.json
+RELATIONS:
+- TYPE: Parent
+  VALUE: STRATA-SYS-004
+
+[REQUIREMENT]
+UID: STRATA-VER-002
+STATUS: Implemented
+TITLE: Deterministic Seeded Rule-Based Stateful Fuzzing
+STATEMENT: >>>
+The verification suite shall execute deterministic seeded rule-based fuzzing covering at least 25,000 random transitions per run across zero-copy DataTopic stalls/crashes, malformed CCSDS wire byte injection, and CriticalStore SEU bit-flip corruption, proving zero memory leaks, zero parser crashes, and zero corrupted state restorations.
+<<<
+RATIONALE: >>>
+Stateful rule-based fuzzing uncovers subtle concurrency, boundary, and fault-recovery corner cases that hand-written unit tests miss.
+<<<
+VERIFICATION_METHOD: Test
+ARTIFACT: tests/rule_fuzzer/test_rule_fuzzer.cpp
+RELATIONS:
+- TYPE: Parent
+  VALUE: STRATA-SYS-008
+
+[REQUIREMENT]
+UID: STRATA-VER-003
+STATUS: Planned
+TITLE: Verilator RTL Co-Simulation and Deterministic Flight Shadow Replay
+STATEMENT: >>>
+The verification suite shall provide a Verilator RegisterTransport backend running unmodified flight C++20 instrument components directly against SystemVerilog SCSR and DMA RTL in CI, plus optional ring/Blackboard shadow recording for bit-exact offline anomaly replay.
+<<<
+RATIONALE: >>>
+Executing real flight C++20 code against real RTL in CI catches hardware-software register, endianness, and DMA timing mismatches prior to silicon bring-up.
+<<<
+VERIFICATION_METHOD: Test
+ARTIFACT: tests/verilator_hil/
+RELATIONS:
+- TYPE: Parent
+  VALUE: STRATA-SYS-008
+
+[REQUIREMENT]
+UID: STRATA-VER-004
+STATUS: Implemented
+TITLE: Automated StrictDoc Requirements Graph and Traceability CI Gate
+STATEMENT: >>>
+The CI test suite shall automatically parse and validate all StrictDoc (.sdoc) specifications under requirements/, enforcing valid syntax, unique UIDs, zero dangling Parent relations, acyclicity, valid ARTIFACT file references, and clean StrataForge-native terminology.
+<<<
+RATIONALE: >>>
+Automated requirements graph verification prevents specification drift and maintains continuous NASA NPR 7150.2D bidirectional traceability across every commit.
+<<<
+VERIFICATION_METHOD: Test
+ARTIFACT: tools/check_sdoc.py
+RELATIONS:
+- TYPE: Parent
+  VALUE: STRATA-SYS-001
+
+[[/SECTION]]

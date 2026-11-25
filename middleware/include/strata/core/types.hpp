@@ -46,7 +46,7 @@ namespace literals {
 }
 } // namespace literals
 
-/// Monotonic generation counter incremented on every partition or PL/AIE slot restart (Hubris pattern).
+/// Monotonic generation counter incremented on every partition or PL/AIE slot restart.
 struct GenId {
     uint16_t value{0U};
 
@@ -61,7 +61,7 @@ enum class Criticality : uint8_t {
     ClassD = 2U, // Lower-criticality payload / experimental autonomy
 };
 
-/// ARINC 653-aligned partition boot & operating modes.
+/// Partition boot & operating modes.
 enum class PartitionMode : uint8_t {
     ColdStart = 0U,
     WarmStart = 1U, // Triggered after fault recovery with CriticalStore<T> preserved
@@ -90,7 +90,7 @@ enum class SlotCmd : uint32_t {
     SoftReset    = 5U,
 };
 
-/// Standard F' / ECSS PUS event severity levels.
+/// Flight event severity levels.
 enum class EventSeverity : uint8_t {
     Diagnostic = 0U,
     Command    = 1U,
@@ -127,7 +127,7 @@ enum class Status : uint16_t {
     InProgress         = 21U,
 };
 
-/// 4-Stage ECSS PUS ST[01] command verification states.
+/// 4-stage command verification states.
 enum class CmdStage : uint8_t {
     Accepted  = 0U,
     Started   = 1U,

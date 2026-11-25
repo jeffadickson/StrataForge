@@ -22,7 +22,7 @@ enum class ComPriority : uint8_t {
     Count      = 5U,
 };
 
-/// Fixed-capacity Priority ComQueue (F' Svc::ComQueue parity, zero heap, zero RTOS threads).
+/// Fixed-capacity Priority ComQueue (zero heap, zero RTOS threads).
 template <size_t DepthPerTier, size_t MaxPacketBytes>
 class ComQueue {
 public:
@@ -95,7 +95,7 @@ private:
     std::array<TierQueue, kNumTiers> queues_{};
 };
 
-/// CCSDS ComAggregator (F' Svc::ComAggregator parity): packs variable-size Space Packets
+/// CCSDS ComAggregator: packs variable-size Space Packets
 /// into fixed-size Transfer Frame Data Fields and pads residual bytes with CCSDS Idle Packets (APID 0x7FF).
 template <size_t FrameDataFieldBytes>
     requires(FrameDataFieldBytes > kSpacePacketHeaderBytes + 1U)

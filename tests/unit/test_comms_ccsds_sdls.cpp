@@ -18,8 +18,7 @@ namespace {
 int test_ccsds_total_function_parsers() {
     using namespace strata::services::comms;
 
-    // 1. Regression test for F' CVE-2026-92151 class bugs:
-    //    Truncated 0..6 byte frames MUST return WireErr cleanly — NEVER assert/abort!
+    // 1. Truncated 0..6 byte wire frames MUST return WireErr cleanly — never assert or abort.
     std::array<std::byte, 6U> tiny{};
     for (size_t len = 0U; len < 6U; ++len) {
         auto r = parse_space_packet(std::span<const std::byte>(tiny.data(), len));

@@ -13,7 +13,7 @@ namespace strata {
 
 /// Shared-memory backing storage for a lock-free Seqlock Blackboard (Primitive 1).
 /// Writer partition maps RW; Reader partition(s) map RO via Stage-2 MMU / XMPU.
-/// Unifies ARINC 653 Sampling Port, iceoryx2 Blackboard, DDS TransientLocal, F' TlmChan & PolyDb.
+/// Supports HK telemetry, shared navigation/thermal state, and post-restart state catch-up.
 template <WirePod T>
 struct alignas(64) BlackboardStorage {
     uint32_t     seq{0U};          // Even = consistent, Odd = write in progress
@@ -74,7 +74,7 @@ private:
 };
 
 /// Lock-free, bounded-retry reader handle to a Seqlock Blackboard.
-/// Enforces compile-time DDS Durability (Volatile vs. TransientLocal) and Deadline QoS.
+/// Enforces compile-time Durability (Volatile vs. TransientLocal) and Deadline QoS.
 template <WirePod T, QoSConfig QoS = kDefaultBlackboardQoS>
 class BlackboardReader {
 public:

@@ -13,7 +13,7 @@
 namespace strata {
 
 /// Shared-memory backing storage for a cache-line-isolated lock-free SPSC ring (Primitive 2).
-/// Unifies ARINC 653 Queuing Port, F' async ports, cFS Software Bus, and Hubris GenId checks.
+/// Supports bounded inter-partition command/event queuing with generation tracking and doorbells.
 template <WirePod T, size_t Capacity>
     requires PowerOfTwo<Capacity>
 struct alignas(64) SpscRingStorage {

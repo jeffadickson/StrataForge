@@ -10,7 +10,7 @@
 
 namespace strata::services::storage {
 
-/// 64-bit Partition-Jailed Storage Volume (eliminates F' FileDownlink 4 GiB ceiling).
+/// 64-bit Partition-Jailed Storage Volume.
 struct StorageVolume {
     uint8_t  volume_id{0U};
     uint8_t  owner_partition{0U};

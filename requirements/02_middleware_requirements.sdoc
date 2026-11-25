@@ -1,0 +1,303 @@
+[DOCUMENT]
+TITLE: StrataForge C++20 Middleware SDK Requirements Specification
+UID: STRATA-DOC-MW
+PREFIX: STRATA-MW-
+
+[GRAMMAR]
+ELEMENTS:
+- TAG: REQUIREMENT
+  FIELDS:
+  - TITLE: UID
+    TYPE: String
+    REQUIRED: True
+  - TITLE: STATUS
+    TYPE: String
+    REQUIRED: True
+  - TITLE: TITLE
+    TYPE: String
+    REQUIRED: True
+  - TITLE: STATEMENT
+    TYPE: String
+    REQUIRED: True
+  - TITLE: RATIONALE
+    TYPE: String
+    REQUIRED: True
+  - TITLE: VERIFICATION_METHOD
+    TYPE: String
+    REQUIRED: True
+  - TITLE: ARTIFACT
+    TYPE: String
+    REQUIRED: False
+  RELATIONS:
+  - TYPE: Parent
+
+[[SECTION]]
+TITLE: Core Types, Integrity, QoS, Concepts, and State Machines
+
+[REQUIREMENT]
+UID: STRATA-MW-001
+STATUS: Implemented
+TITLE: Strongly Typed Core Domain and Value-Error Primitives
+STATEMENT: >>>
+The middleware core shall provide strongly typed TaiTimestamp, DurationNs (with compile-time _ns, _us, _ms, and _s literals), GenId, Status, CmdStage, CmdResult, and a zero-exception, zero-heap [[nodiscard]] Expected<T, E> template (including void specialization).
+<<<
+RATIONALE: >>>
+Strong types eliminate raw integer unit confusion while Expected<T, E> enforces explicit error handling without C++ exception overhead.
+<<<
+VERIFICATION_METHOD: Test
+ARTIFACT: middleware/include/strata/core/expected.hpp
+RELATIONS:
+- TYPE: Parent
+  VALUE: STRATA-SYS-004
+
+[REQUIREMENT]
+UID: STRATA-MW-002
+STATUS: Implemented
+TITLE: Compile-Time and Runtime Castagnoli CRC-32C Engine
+STATEMENT: >>>
+The middleware shall provide a constexpr and runtime Castagnoli CRC-32C implementation (reflected polynomial 0x82F63B78) verified at compile time against the standard check vector (0xE3069283 for ASCII 123456789).
+<<<
+RATIONALE: >>>
+A single verified CRC-32C primitive provides fast, consistent data integrity verification across parameter banks, persistent checkpoints, data descriptors, and memory scrubbing.
+<<<
+VERIFICATION_METHOD: Test
+ARTIFACT: middleware/include/strata/core/crc32c.hpp
+RELATIONS:
+- TYPE: Parent
+  VALUE: STRATA-SYS-007
+
+[REQUIREMENT]
+UID: STRATA-MW-003
+STATUS: Implemented
+TITLE: Compile-Time Static Quality-of-Service Contracts
+STATEMENT: >>>
+The middleware shall allow every Blackboard, SpscChannel, and DataTopic to bind a compile-time QoSConfig specifying Durability (Volatile or TransientLocal), Reliability (Guaranteed or BestEffortDropOldest), Deadline, Liveliness, LeaseTimeout, and History depth with zero runtime discovery overhead.
+<<<
+RATIONALE: >>>
+Static compile-time QoS enforces explicit staleness, back-pressure, and crash-reclamation semantics without dynamic broker or discovery complexity.
+<<<
+VERIFICATION_METHOD: Test
+ARTIFACT: middleware/include/strata/core/qos.hpp
+RELATIONS:
+- TYPE: Parent
+  VALUE: STRATA-SYS-003
+
+[REQUIREMENT]
+UID: STRATA-MW-004
+STATUS: Implemented
+TITLE: C++20 Concepts and Zero-Vtable Component Wiring
+STATEMENT: >>>
+The middleware shall enforce component, wire-POD, power-of-two ring capacity, doorbell, clock, and MMIO register transport contracts via C++20 concepts with static compile-time dispatch and zero generated inheritance base classes.
+<<<
+RATIONALE: >>>
+Pure C++20 concepts deliver strong interface checking and optimal inlined bare-metal codegen without external DSL lock-in or virtual dispatch overhead.
+<<<
+VERIFICATION_METHOD: Inspection
+ARTIFACT: middleware/include/strata/core/concepts.hpp
+RELATIONS:
+- TYPE: Parent
+  VALUE: STRATA-SYS-004
+
+[REQUIREMENT]
+UID: STRATA-MW-005
+STATUS: Implemented
+TITLE: Zero-Allocation Table-Driven Finite State Machine
+STATEMENT: >>>
+The middleware shall provide a deterministic, zero-allocation Fsm template supporting declarative transition tables, guard predicates, transition actions, transition counters, and explicit GuardRejected and UnhandledEvent status reporting.
+<<<
+RATIONALE: >>>
+Mode management, self-test sequences, and hardware lifecycle state machines require auditable, deterministic transition logic without dynamic memory or virtual state objects.
+<<<
+VERIFICATION_METHOD: Test
+ARTIFACT: middleware/include/strata/core/fsm.hpp
+RELATIONS:
+- TYPE: Parent
+  VALUE: STRATA-SYS-004
+
+[[/SECTION]]
+
+[[SECTION]]
+TITLE: Inter-Partition Communication and Persistent State Primitives
+
+[REQUIREMENT]
+UID: STRATA-MW-006
+STATUS: Implemented
+TITLE: Lock-Free Seqlock Blackboard Primitive
+STATEMENT: >>>
+The middleware shall provide a cache-line-aligned Seqlock Blackboard (BlackboardStorage, BlackboardWriter, BlackboardReader) supporting non-blocking single-writer publishing, bounded-retry lock-free reading, Volatile vs. TransientLocal durability, and explicit DeadlineMissed staleness detection.
+<<<
+RATIONALE: >>>
+Pull-sampled shared-memory blackboards decouple housekeeping and shared state producers from telemetry collectors, eliminating queue overflows and priority inversion during anomalies.
+<<<
+VERIFICATION_METHOD: Test
+ARTIFACT: middleware/include/strata/ipc/blackboard.hpp
+RELATIONS:
+- TYPE: Parent
+  VALUE: STRATA-SYS-003
+
+[REQUIREMENT]
+UID: STRATA-MW-007
+STATUS: Implemented
+TITLE: Cache-Line-Isolated Lock-Free SPSC Channel
+STATEMENT: >>>
+The middleware shall provide a cache-line-isolated Single-Producer Single-Consumer ring (128-byte SpscHeader separating producer head and consumer tail onto distinct 64-byte cache lines) supporting power-of-two depth, peer GenId validation, interrupt-coalesced doorbell wakeups, and bounded WCET drain_up_to processing.
+<<<
+RATIONALE: >>>
+Separating producer and consumer cache lines eliminates false sharing across cores while generation validation and bounded draining guarantee deterministic control-plane IPC.
+<<<
+VERIFICATION_METHOD: Test
+ARTIFACT: middleware/include/strata/ipc/spsc_channel.hpp
+RELATIONS:
+- TYPE: Parent
+  VALUE: STRATA-SYS-003
+
+[REQUIREMENT]
+UID: STRATA-MW-008
+STATUS: Implemented
+TITLE: Bounded Rate-Capped and Deduplicating Event Ring
+STATEMENT: >>>
+The middleware shall provide a per-partition bounded EventWriter supporting runtime severity-bitmask filtering, fixed-size binary EventRecord emission, per-event-ID cooldown suppression with repeat_count aggregation, and unconditional Fatal-event bypass of filtering and cooldowns.
+<<<
+RATIONALE: >>>
+Local burst deduplication prevents a noisy payload anomaly from flooding downlink event buffers or masking critical flight-system alerts.
+<<<
+VERIFICATION_METHOD: Test
+ARTIFACT: middleware/include/strata/ipc/event_ring.hpp
+RELATIONS:
+- TYPE: Parent
+  VALUE: STRATA-SYS-003
+
+[REQUIREMENT]
+UID: STRATA-MW-009
+STATUS: Implemented
+TITLE: Double-Buffered CRC-32C Parameter Bank
+STATEMENT: >>>
+The middleware shall provide a double-buffered ParamBank supporting range/invariant validation during shadow-bank staging, CRC-32C integrity protection, atomic minor-frame commit, atomic rollback to the prior valid bank, and runtime verify_active SEU checking.
+<<<
+RATIONALE: >>>
+Atomic bank flipping eliminates torn multi-parameter configuration updates and allows safe on-orbit calibration changes with instant rollback.
+<<<
+VERIFICATION_METHOD: Test
+ARTIFACT: middleware/include/strata/ipc/param_bank.hpp
+RELATIONS:
+- TYPE: Parent
+  VALUE: STRATA-SYS-007
+
+[REQUIREMENT]
+UID: STRATA-MW-010
+STATUS: Implemented
+TITLE: Ping-Pong Crash-Atomic CriticalStore
+STATEMENT: >>>
+The middleware shall provide a ping-pong double-buffered CriticalStore stamped with magic, monotonic sequence number, 64-bit MANIFEST_HASH, and CRC-32C such that an upset or crash during a checkpoint write automatically falls back to the prior intact verified slot upon WarmStart restore.
+<<<
+RATIONALE: >>>
+Crash-atomic warm-reset persistence enables sub-2 ms recovery of instrument modes, calibration epochs, and counters across SEU restarts and spare-slot failovers without flash wear.
+<<<
+VERIFICATION_METHOD: Test
+ARTIFACT: middleware/include/strata/ipc/critical_store.hpp
+RELATIONS:
+- TYPE: Parent
+  VALUE: STRATA-SYS-007
+
+[[/SECTION]]
+
+[[SECTION]]
+TITLE: Zero-Copy Data Plane, Hardware Slot Contract, and Runtime
+
+[REQUIREMENT]
+UID: STRATA-MW-011
+STATUS: Implemented
+TITLE: Atomic Bitmask FramePool and Linear Move-Only FrameLease
+STATEMENT: >>>
+The middleware shall provide a static XMPU-aligned FramePool tracking exclusive producer and concurrent Read-Only subscriber ownership via an idempotent atomic bitmask per slot, wrapped by non-copyable [[nodiscard]] FrameLease and ReadOnlyFrameView RAII handles that automatically release slots on scope exit.
+<<<
+RATIONALE: >>>
+Move-only linear handles prevent buffer leaks at compile time while atomic bitmask ownership makes double-free races mathematically impossible even under concurrent FDIR reclamation.
+<<<
+VERIFICATION_METHOD: Test
+ARTIFACT: middleware/include/strata/data/frame_lease.hpp
+RELATIONS:
+- TYPE: Parent
+  VALUE: STRATA-SYS-006
+
+[REQUIREMENT]
+UID: STRATA-MW-012
+STATUS: Implemented
+TITLE: Zero-Copy One-to-Many DataTopic with Crash Lease Reclamation
+STATEMENT: >>>
+The middleware shall provide a 1-to-N DataTopic publishing only 32-byte FrameDesc metadata to subscriber descriptor rings while payload bytes remain stationary in memory, enforcing Guaranteed (lossless) vs. BestEffortDropOldest (non-blocking shed) per subscriber and supporting timeout-based lease reclamation and crashed-subscriber revocation.
+<<<
+RATIONALE: >>>
+Direct 1-to-N zero-copy fan-out allows recorders, quick-look downlinks, and onboard analytics to share multi-Gbps sensor frames simultaneously without splitter components or CPU copies, while preventing stalled payloads from starving critical recorders.
+<<<
+VERIFICATION_METHOD: Test
+ARTIFACT: middleware/include/strata/data/data_topic.hpp
+RELATIONS:
+- TYPE: Parent
+  VALUE: STRATA-SYS-006
+
+[REQUIREMENT]
+UID: STRATA-MW-013
+STATUS: Implemented
+TITLE: Compile-Time Access-Enforced MMIO RegMap
+STATEMENT: >>>
+The middleware shall provide compile-time typed MMIO register definitions enforcing RO, WO, RW, and RW1C (write-1-to-clear) access policies over any RegisterTransport backend (direct volatile AXI4-Lite MMIO, host MockRegisterBank, or Verilator RTL bridge).
+<<<
+RATIONALE: >>>
+Compile-time access enforcement eliminates invalid register reads/writes at build time while decoupling drivers from physical memory addresses for host SIL and RTL testing.
+<<<
+VERIFICATION_METHOD: Test
+ARTIFACT: middleware/include/strata/hw/reg_map.hpp
+RELATIONS:
+- TYPE: Parent
+  VALUE: STRATA-SYS-008
+
+[REQUIREMENT]
+UID: STRATA-MW-014
+STATUS: Implemented
+TITLE: Unified Hardware SlotHandle and 4 KB SCSR Contract
+STATEMENT: >>>
+The middleware shall provide a unified SlotHandle operating over the standardized 4 KB Slot Control and Status Register (SCSR) layout to verify magic and 64-bit MANIFEST_HASH, inspect SlotState, issue uniform SlotCmd transitions, clear RW1C faults, kick the hardware slot watchdog, and read hardware-latched 64-bit TAI timestamps across static spatial PL, dynamic DFX PL, and AIE slots.
+<<<
+RATIONALE: >>>
+One uniform hardware-software slot contract allows static spatial and dynamically reconfigurable instruments to share identical lifecycle, watchdog, and FDIR management software.
+<<<
+VERIFICATION_METHOD: Test
+ARTIFACT: middleware/include/strata/hw/slot_handle.hpp
+RELATIONS:
+- TYPE: Parent
+  VALUE: STRATA-SYS-002
+
+[REQUIREMENT]
+UID: STRATA-MW-015
+STATUS: Implemented
+TITLE: Zero-Thread CyclicScheduler and Unique-Opcode CommandRouter
+STATEMENT: >>>
+The middleware shall provide a compile-time unrolled CyclicScheduler supporting periodic rate groups and phased tick windows without per-component RTOS threads, paired with a zero-vtable CommandRouter that rejects duplicate command opcodes at compile time via static_assert.
+<<<
+RATIONALE: >>>
+Eliminating per-component threads and dynamic registration tables lowers RAM usage, improves cache locality, and prevents runtime opcode collisions.
+<<<
+VERIFICATION_METHOD: Test
+ARTIFACT: middleware/include/strata/runtime/partition_runtime.hpp
+RELATIONS:
+- TYPE: Parent
+  VALUE: STRATA-SYS-004
+
+[REQUIREMENT]
+UID: STRATA-MW-016
+STATUS: Planned
+TITLE: Composable Per-Partition Subtopology Bundles
+STATEMENT: >>>
+The middleware shall provide parameterized C++20 template Subtopology bundles (such as CdhBundle, CommsBundle, StorageBundle, and FdirBundle) allowing distinct partitions within the same mission build to instantiate independent queue depths, pool sizes, and safety profiles without global configuration collisions.
+<<<
+RATIONALE: >>>
+Per-partition template parameterization eliminates monolithic single-config build bottlenecks while preserving rapid mission assembly.
+<<<
+VERIFICATION_METHOD: Inspection
+ARTIFACT: middleware/include/strata/runtime/
+RELATIONS:
+- TYPE: Parent
+  VALUE: STRATA-SYS-001
+
+[[/SECTION]]

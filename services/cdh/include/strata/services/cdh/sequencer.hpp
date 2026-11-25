@@ -25,7 +25,7 @@ struct SeqStep {
     uint64_t    time_or_offset_ns{0U};
 };
 
-/// Multi-slot Command Sequencer (F' CmdSequencer + SeqDispatcher + cFS SC parity).
+/// Multi-slot time-tagged Command Sequencer with CRC-32C validation and safe-mode abort.
 template <size_t MaxSlots = 4U, size_t MaxStepsPerSeq = 32U>
 class SeqEngine {
 public:

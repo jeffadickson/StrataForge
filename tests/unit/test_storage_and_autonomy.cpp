@@ -18,7 +18,7 @@ namespace {
 int test_dp_catalog_priority_and_eviction() {
     using namespace strata::services::storage;
 
-    // 10 GiB solid-state recorder (64-bit sizes, well beyond F' 4 GiB limit)
+    // 10 GiB solid-state recorder verifying full 64-bit sizing
     constexpr uint64_t kGiB = 1024ULL * 1024ULL * 1024ULL;
     DpCatalog<16U> cat(10ULL * kGiB);
 

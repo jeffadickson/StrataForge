@@ -11,8 +11,7 @@
 namespace strata {
 
 /// Double-buffered, CRC-32C-verified Parameter Bank (Primitive 4).
-/// Unifies NASA cFS cFE TBL, JPL F' PrmDb, and ESA PUS ST[20].
-/// Eliminates torn multi-parameter updates via staged validation + atomic minor-frame flip.
+/// Eliminates torn multi-parameter updates via staged validation and atomic minor-frame commit.
 template <WirePod ParamT>
 class ParamBank {
 public:

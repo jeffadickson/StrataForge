@@ -14,7 +14,6 @@
 namespace strata {
 
 /// True Zero-Copy 1-to-N DataTopic (Primitive 3 fan-out).
-/// Eliminates F' Svc::GenericHub copies, TlmSplit/BufferRepeater boilerplate, and BufferContextTable.
 /// Only 32-byte FrameDesc values cross partition boundaries; payload bytes stay in XMPU DDR4/HBM.
 template <typename PoolT, size_t MaxSubscribers, size_t RingDepth>
     requires(MaxSubscribers > 0U && MaxSubscribers <= 16U && PowerOfTwo<RingDepth>)

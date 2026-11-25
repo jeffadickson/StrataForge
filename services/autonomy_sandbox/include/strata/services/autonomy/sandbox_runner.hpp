@@ -34,7 +34,7 @@ struct SandboxRunSummary {
     bool     budget_preempted{false};
 };
 
-/// Isolated Autonomy Sandbox (safe replacement for in-process F' WasmSequencer).
+/// Isolated Autonomy Sandbox.
 /// Runs inside a dedicated unprivileged hypervisor partition with:
 ///  1. Hard step-budget preemption (prevents infinite-loop CPU starvation),
 ///  2. Read-Only telemetry snapshot inputs,

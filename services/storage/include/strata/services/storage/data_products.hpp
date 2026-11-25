@@ -11,21 +11,21 @@
 
 namespace strata::services::storage {
 
-/// 64-byte CRC-32C-protected Data Product Container Header (Zero-Copy Data Products 2.0).
-/// Stamped directly onto DDR4/HBM FrameLease payloads without CPU copying (upgrades F' Fw::Dp).
+/// 64-byte CRC-32C-protected Data Product Container Header.
+/// Stamped directly onto DDR4/HBM FrameLease payloads without CPU copying.
 struct alignas(64) DpHeader {
     static constexpr uint32_t kMagic = 0x5354'4450U; // "STDP"
 
     uint32_t magic{kMagic};
-    uint32_t product_id{0U};     // Unique monotonic product ID in catalog
-    uint16_t container_id{0U};   // Dictionary container type ID
-    uint8_t  priority{128U};     // 0 = highest priority, 255 = lowest priority
+    uint32_t product_id{0U};      // Unique monotonic product ID in catalog
+    uint16_t container_id{0U};    // Dictionary container type ID
+    uint8_t  priority{128U};      // 0 = highest priority, 255 = lowest priority
     uint8_t  compression_alg{0U}; // 0 = Raw, 1 = PL CCSDS-123, 2 = LZ4, 3 = Zstd
     uint32_t record_count{0U};
     uint64_t tai_start_ns{0U};
     uint64_t tai_end_ns{0U};
-    uint64_t payload_bytes{0U};  // Full 64-bit size (eliminates F' 4 GiB limit)
-    uint64_t storage_offset{0U}; // Offset on NV solid-state recorder
+    uint64_t payload_bytes{0U};   // Full 64-bit size
+    uint64_t storage_offset{0U};  // Offset on NV solid-state recorder
     uint32_t payload_crc32c{0U};
     uint32_t header_crc32c{0U};
     uint8_t  reserved[8]{};
@@ -48,7 +48,7 @@ struct DpCatalogEntry {
     bool     active{false};
 };
 
-/// Priority-Driven Data Product Catalog (F' Svc::DpCatalog parity + 64-bit sizes + auto-eviction).
+/// Priority-driven 64-bit Data Product Catalog with automatic lower-priority eviction.
 template <size_t MaxProducts = 64U>
 class DpCatalog {
 public:

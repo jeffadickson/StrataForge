@@ -12,7 +12,7 @@ namespace {
         }                                                                                   \
     } while (false)
 
-int test_watchpoint_actionpoint_and_scosa_escalation() {
+int test_watchpoint_actionpoint_and_failover_escalation() {
     using namespace strata::services::fdir;
 
     FdirEngine<> fdir{};
@@ -35,7 +35,7 @@ int test_watchpoint_actionpoint_and_scosa_escalation() {
               .debounce_ticks = 1U,
           }) == strata::Status::Ok);
 
-    // AP 0: (WP0 && WP1) -> Quiesce & Reload Slot 1; escalate to ScOSA spare Slot 2 after 2 reloads
+    // AP 0: (WP0 && WP1) -> Quiesce & Reload Slot 1; escalate to spare Slot 2 after 2 reloads
     CHECK(fdir.add_actionpoint(ActionpointDef{
               .ap_id                            = 100U,
               .required_wp_mask                 = (1U << 0U) | (1U << 1U),
@@ -46,8 +46,8 @@ int test_watchpoint_actionpoint_and_scosa_escalation() {
               .max_slot_reloads_before_failover = 2U,
           }) == strata::Status::Ok);
 
-    // DLR ScOSA pre-verified failover: Slot 1 -> Spare DFX Slot 2 (personality 0x22)
-    CHECK(fdir.register_scosa_failover(ScosaFailoverEntry{
+    // Pre-verified spare-slot failover: Slot 1 -> Spare DFX Slot 2 (personality 0x22)
+    CHECK(fdir.register_slot_failover(SlotFailoverEntry{
               .primary_slot_id   = 1U,
               .spare_slot_id     = 2U,
               .personality_id    = 0x0022U,
@@ -70,9 +70,9 @@ int test_watchpoint_actionpoint_and_scosa_escalation() {
     CHECK(fdir.evaluate_actionpoints([&](const RecoveryDirective& d) noexcept { last = d; }) == 1U);
     CHECK(last.level == RecoveryLevel::QuiesceAndReloadSlot);
 
-    // Fault #3 exceeds max_slot_reloads_before_failover -> automatic DLR ScOSA failover to Slot 2!
+    // Fault #3 exceeds max_slot_reloads_before_failover -> automatic failover to spare Slot 2
     CHECK(fdir.evaluate_actionpoints([&](const RecoveryDirective& d) noexcept { last = d; }) == 1U);
-    CHECK(last.level == RecoveryLevel::ScosaFailoverSpareSlot);
+    CHECK(last.level == RecoveryLevel::FailoverSpareSlot);
     CHECK(last.primary_slot_id == 1U);
     CHECK(last.failover_slot_id == 2U);
     CHECK(last.personality_id == 0x0022U);
@@ -80,7 +80,7 @@ int test_watchpoint_actionpoint_and_scosa_escalation() {
     return 0;
 }
 
-int test_xilsem_cram_frame_attribution() {
+int test_cram_frame_attribution() {
     using namespace strata::services::fdir;
 
     FdirEngine<> fdir{};
@@ -90,7 +90,7 @@ int test_xilsem_cram_frame_attribution() {
               .slot_id          = 1U,
               .owner_partition  = 4U,
           }) == strata::Status::Ok);
-    CHECK(fdir.register_scosa_failover(ScosaFailoverEntry{
+    CHECK(fdir.register_slot_failover(SlotFailoverEntry{
               .primary_slot_id   = 1U,
               .spare_slot_id     = 2U,
               .personality_id    = 0x0022U,
@@ -102,12 +102,12 @@ int test_xilsem_cram_frame_attribution() {
     CHECK(d1.level == RecoveryLevel::QuiesceAndReloadSlot);
     CHECK(d1.primary_slot_id == 1U);
 
-    // Repeated hard CRAM failure in Slot 1 -> ScOSA failover to spare Slot 2
+    // Repeated hard CRAM failure in Slot 1 -> spare-slot failover to Slot 2
     const auto d2 = fdir.handle_uncorrectable_cram_upset(0x0012'3456U, 1U);
-    CHECK(d2.level == RecoveryLevel::ScosaFailoverSpareSlot);
+    CHECK(d2.level == RecoveryLevel::FailoverSpareSlot);
     CHECK(d2.failover_slot_id == 2U);
 
-    // Uncorrectable upset in static Class B shell outside mapped dynamic slots -> System Safe Mode
+    // Uncorrectable upset in static shell outside mapped dynamic slots -> System Safe Mode
     const auto d_shell = fdir.handle_uncorrectable_cram_upset(0x0000'0040U, 1U);
     CHECK(d_shell.level == RecoveryLevel::SystemSafeMode);
     return 0;
@@ -116,8 +116,8 @@ int test_xilsem_cram_frame_attribution() {
 } // namespace
 
 int main() {
-    if (test_watchpoint_actionpoint_and_scosa_escalation() != 0) return 1;
-    if (test_xilsem_cram_frame_attribution() != 0) return 1;
-    std::printf("PASS: strata.unit.fdir_and_scosa\n");
+    if (test_watchpoint_actionpoint_and_failover_escalation() != 0) return 1;
+    if (test_cram_frame_attribution() != 0) return 1;
+    std::printf("PASS: strata.unit.fdir_and_failover\n");
     return 0;
 }

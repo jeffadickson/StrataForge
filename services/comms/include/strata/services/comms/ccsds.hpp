@@ -13,7 +13,7 @@
 
 namespace strata::services::comms {
 
-/// Total-function wire parser errors (ZERO asserts on untrusted external input — kills CVE-2026-92151).
+/// Total-function wire parser errors (zero asserts on untrusted external input).
 enum class WireErr : uint16_t {
     TruncatedHeader  = 1U,
     LengthMismatch   = 2U,

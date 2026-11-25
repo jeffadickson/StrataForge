@@ -1,0 +1,141 @@
+[DOCUMENT]
+TITLE: StrataForge System Requirements Specification
+UID: STRATA-DOC-SYS
+PREFIX: STRATA-SYS-
+
+[GRAMMAR]
+ELEMENTS:
+- TAG: REQUIREMENT
+  FIELDS:
+  - TITLE: UID
+    TYPE: String
+    REQUIRED: True
+  - TITLE: STATUS
+    TYPE: String
+    REQUIRED: True
+  - TITLE: TITLE
+    TYPE: String
+    REQUIRED: True
+  - TITLE: STATEMENT
+    TYPE: String
+    REQUIRED: True
+  - TITLE: RATIONALE
+    TYPE: String
+    REQUIRED: True
+  - TITLE: VERIFICATION_METHOD
+    TYPE: String
+    REQUIRED: True
+  - TITLE: ARTIFACT
+    TYPE: String
+    REQUIRED: False
+  RELATIONS:
+  - TYPE: Parent
+
+[[SECTION]]
+TITLE: Mission Architecture and Assurance
+
+[REQUIREMENT]
+UID: STRATA-SYS-001
+STATUS: Implemented
+TITLE: Mixed-Criticality Spaceflight Assurance Support
+STATEMENT: >>>
+The StrataForge platform shall support mixed-criticality spaceflight instruments spanning NASA NPR 7150.2D Class B, Class C, and Class D software assurance levels on a single shared FPGA compute node without requiring Class C or Class D payloads to be certified at Class B rigor.
+<<<
+RATIONALE: >>>
+Containing the Class B Trusted Computing Base (TCB) to the hypervisor, core middleware, and critical flight services keeps verification and MC/DC coverage costs tractable while enabling high-throughput science payloads on the same silicon.
+<<<
+VERIFICATION_METHOD: Analysis
+ARTIFACT: cmake/strata_safety_flags.cmake
+
+[REQUIREMENT]
+UID: STRATA-SYS-002
+STATUS: Implemented
+TITLE: Dual Spatial and Dynamic Temporal Shared-FPGA Modes
+STATEMENT: >>>
+The StrataForge platform shall support both concurrent spatial FPGA sharing (multiple isolated static partitions executing simultaneously) and dynamic temporal FPGA sharing (partial reconfiguration of programmable logic slots and AI Engine columns) on Versal (XQRVC1902, XQRVE2102) and Kintex (XQRKU060, UltraScale+) targets.
+<<<
+RATIONALE: >>>
+Spaceflight missions require concurrent operation of always-on critical avionics alongside mission-phase-swappable science pipelines and autonomous single-slot radiation repair.
+<<<
+VERIFICATION_METHOD: Demonstration
+ARTIFACT: manifests/examples/versal_dual_instrument.toml
+
+[REQUIREMENT]
+UID: STRATA-SYS-003
+STATUS: Implemented
+TITLE: Hardware-Enforced Fault and Criticality Isolation
+STATEMENT: >>>
+The StrataForge platform shall enforce strict temporal, spatial memory, NoC/bus bandwidth, and interrupt isolation such that no fault, infinite loop, memory overwrite, or interrupt storm in a lower-criticality partition can degrade or halt any higher-criticality or sibling partition.
+<<<
+RATIONALE: >>>
+Software-only conventions within a flat address space cannot satisfy NASA Class B freedom-from-interference requirements when hosting untrusted or experimental Class C/D science payloads.
+<<<
+VERIFICATION_METHOD: Test
+ARTIFACT: tests/unit/test_zero_copy_data_plane.cpp
+
+[REQUIREMENT]
+UID: STRATA-SYS-004
+STATUS: Implemented
+TITLE: Deterministic Bare-Metal C++20 Safety Profile
+STATEMENT: >>>
+All StrataForge flight software shall compile under C++20 with dynamic heap allocation disabled, C++ exceptions disabled (-fno-exceptions), RTTI disabled (-fno-rtti), thread-safe static guards disabled (-fno-threadsafe-statics), zero virtual dispatch on hot paths, warnings treated as errors, and compile-time stack-usage reporting enabled.
+<<<
+RATIONALE: >>>
+Eliminating heap fragmentation, exception unwinding tables, RTTI, and indirect virtual calls ensures deterministic worst-case execution time (WCET) and clean structural coverage for Class B verification.
+<<<
+VERIFICATION_METHOD: Inspection
+ARTIFACT: cmake/strata_safety_flags.cmake
+
+[REQUIREMENT]
+UID: STRATA-SYS-005
+STATUS: Implemented
+TITLE: Single-Source-of-Truth Manifest and Hash Lock
+STATEMENT: >>>
+The StrataForge build flow shall derive partition tables, memory maps, hardware slot contracts, wire schemas, and ground dictionaries from a single declarative manifest file stamped with a canonical 64-bit MANIFEST_HASH verified across software and FPGA RTL at runtime.
+<<<
+RATIONALE: >>>
+A single declarative source of truth eliminates flight-software, FPGA-bitstream, and ground-dictionary interface drift and prevents mismatched on-orbit loads.
+<<<
+VERIFICATION_METHOD: Test
+ARTIFACT: tools/strata-gen/strata_gen.py
+
+[REQUIREMENT]
+UID: STRATA-SYS-006
+STATUS: Implemented
+TITLE: Zero-Copy High-Rate Instrument Data Plane
+STATEMENT: >>>
+The StrataForge data plane shall transfer high-rate sensor and accelerator frames from programmable logic or AI Engine DMA into external memory and across one or more consuming partitions without copying payload bytes on the host CPU.
+<<<
+RATIONALE: >>>
+Multi-Gbps hyperspectral, SAR, lidar, and SDR payloads saturate embedded flight CPUs if frames are serialized or copied across address-space boundaries.
+<<<
+VERIFICATION_METHOD: Test
+ARTIFACT: middleware/include/strata/data/data_topic.hpp
+
+[REQUIREMENT]
+UID: STRATA-SYS-007
+STATUS: Implemented
+TITLE: Autonomous Radiation Upset Detection and Surgical Recovery
+STATEMENT: >>>
+The StrataForge platform shall detect single-event upsets in configuration memory and software segments, correlate hardware upsets to individual programmable logic slots, perform bounded quiesce and authenticated partial reload, preserve warm-restart state, and escalate repeated hardware failures to spare-slot failover without disrupting sibling partitions.
+<<<
+RATIONALE: >>>
+Orbital radiation environments induce routine SEUs and SEFIs; surgical single-slot recovery prevents unnecessary spacecraft-wide safing events.
+<<<
+VERIFICATION_METHOD: Test
+ARTIFACT: services/fdir_slot_mgr/include/strata/services/fdir/fdir_engine.hpp
+
+[REQUIREMENT]
+UID: STRATA-SYS-008
+STATUS: Partially Implemented
+TITLE: Native Host SIL, Seeded Fuzzing, and RTL Co-Simulation
+STATEMENT: >>>
+The StrataForge codebase shall compile identically for bare-metal flight targets, host Software-in-the-Loop (SIL) deterministic simulation, seeded stateful rule-based fuzzing, and Verilator RTL hardware-in-the-loop co-simulation without modifying instrument application source code.
+<<<
+RATIONALE: >>>
+Concept-swappable hardware and hypervisor backends allow exhaustive CI verification and fault injection long before flight silicon is available.
+<<<
+VERIFICATION_METHOD: Test
+ARTIFACT: tests/rule_fuzzer/test_rule_fuzzer.cpp
+
+[[/SECTION]]

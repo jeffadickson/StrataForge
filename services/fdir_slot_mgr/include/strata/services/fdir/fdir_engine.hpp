@@ -9,7 +9,7 @@
 
 namespace strata::services::fdir {
 
-/// Watchpoint comparison operators (cFS LC + ESA PUS ST[12]).
+/// Watchpoint comparison operators for autonomous onboard limit monitoring.
 enum class CompareOp : uint8_t {
     GreaterThan = 0U,
     LessThan    = 1U,
@@ -18,16 +18,16 @@ enum class CompareOp : uint8_t {
     OutOfRange  = 4U, // value < low_limit || value > high_limit
 };
 
-/// ARINC 653 Multi-Level Recovery Escalation Ladder + DLR ScOSA Failover.
+/// Multi-level autonomous recovery escalation ladder.
 enum class RecoveryLevel : uint8_t {
-    LocalWarn              = 0U, // Emit WARNING_HI, no restart
-    WarmRestartPartition   = 1U, // hyp_part_ctl(WARM_RESTART) + CriticalStore<T> restore
-    QuiesceAndReloadSlot   = 2U, // SCSR.QUIESCE -> NoC INI / Decoupler -> partial PDI reload
-    ScosaFailoverSpareSlot = 3U, // Migrate personality to pre-verified spare DFX slot
-    SystemSafeMode         = 4U, // Quiesce payload slots & enter minimal beacon mode
+    LocalWarn            = 0U, // Emit WARNING_HI, no restart
+    WarmRestartPartition = 1U, // hyp_part_ctl(WARM_RESTART) + CriticalStore<T> restore
+    QuiesceAndReloadSlot = 2U, // SCSR.QUIESCE -> NoC INI / Decoupler -> partial PDI reload
+    FailoverSpareSlot    = 3U, // Migrate personality to pre-verified spare DFX slot
+    SystemSafeMode       = 4U, // Quiesce payload slots & enter minimal beacon mode
 };
 
-/// Declarative Watchpoint entry (uploadable via ParamBank<T> without recompiling FSW!).
+/// Declarative Watchpoint entry (uploadable via ParamBank<T> without recompiling FSW).
 struct WatchpointDef {
     uint16_t  wp_id{0U};
     uint16_t  channel_id{0U};
@@ -38,7 +38,7 @@ struct WatchpointDef {
     bool      enabled{false};
 };
 
-/// Declarative Actionpoint rule (cFS LC AP + ESA PUS ST[19] Event-Action).
+/// Declarative Actionpoint rule mapping debounced Watchpoints to bounded recovery actions.
 struct ActionpointDef {
     uint16_t      ap_id{0U};
     uint32_t      required_wp_mask{0U}; // Bitmask of watchpoint indices (0..31)
@@ -50,7 +50,7 @@ struct ActionpointDef {
     bool          enabled{false};
 };
 
-/// Versal PMC XilSEM / Kintex Rad-Hard Scrubber CRAM Frame-to-Slot coordinate mapping.
+/// Versal PMC XilSEM / Kintex Scrubber CRAM Frame-to-Slot coordinate mapping.
 struct CramFrameRange {
     uint32_t frame_addr_start{0U};
     uint32_t frame_addr_end{0U}; // Inclusive
@@ -59,8 +59,8 @@ struct CramFrameRange {
     bool     enabled{false};
 };
 
-/// DLR ScOSA Offline Reconfiguration Failover Entry (pre-verified deterministic spare mapping).
-struct ScosaFailoverEntry {
+/// Pre-verified offline reconfiguration failover entry mapping a primary PL slot to a spare DFX slot.
+struct SlotFailoverEntry {
     uint16_t primary_slot_id{0U};
     uint16_t spare_slot_id{0U};
     uint16_t personality_id{0U};
@@ -78,8 +78,9 @@ struct RecoveryDirective {
     uint16_t      personality_id{0U};
 };
 
-/// Unified Class B Autonomous FDIR & Reconfiguration Engine.
-/// Fuses cFS LC, ESA PUS ST[12]/ST[19], ARINC 653 HM, Versal XilSEM / Kintex Scrubber, and DLR ScOSA.
+/// Unified Autonomous FDIR & Hardware Reconfiguration Engine.
+/// Combines table-driven watchpoints/actionpoints, multi-level recovery escalation,
+/// CRAM upset-to-slot attribution, and deterministic spare-slot failover.
 template <size_t MaxWps = 32U, size_t MaxAps = 16U, size_t MaxSlots = 8U>
     requires(MaxWps <= 32U)
 class FdirEngine {
@@ -120,7 +121,7 @@ public:
         return Status::Full;
     }
 
-    [[nodiscard]] Status register_scosa_failover(const ScosaFailoverEntry& entry) noexcept {
+    [[nodiscard]] Status register_slot_failover(const SlotFailoverEntry& entry) noexcept {
         for (auto& f : failovers_) {
             if (!f.enabled) {
                 f         = entry;
@@ -179,14 +180,14 @@ public:
                 .primary_slot_id  = ap.def.target_slot_id,
             };
 
-            // Automatic escalation: if slot reloads exceed threshold, promote to DLR ScOSA failover!
+            // Automatic escalation: if slot reloads exceed threshold, promote to spare-slot failover
             if (dir.level == RecoveryLevel::QuiesceAndReloadSlot &&
                 dir.primary_slot_id < MaxSlots) {
                 ++slot_reload_counts_[dir.primary_slot_id];
                 if (slot_reload_counts_[dir.primary_slot_id] >
                     ap.def.max_slot_reloads_before_failover) {
                     if (const auto* fo = find_failover(dir.primary_slot_id)) {
-                        dir.level            = RecoveryLevel::ScosaFailoverSpareSlot;
+                        dir.level            = RecoveryLevel::FailoverSpareSlot;
                         dir.failover_slot_id = fo->spare_slot_id;
                         dir.personality_id   = fo->personality_id;
                         dir.target_partition = fo->standby_partition;
@@ -200,7 +201,7 @@ public:
     }
 
     /// Correlate a Versal PMC XilSEM or Kintex Scrubber uncorrectable CRAM frame address
-    /// directly to its physical slot and compute surgical single-slot recovery (or ScOSA failover).
+    /// directly to its physical slot and compute surgical single-slot recovery or failover.
     [[nodiscard]] RecoveryDirective
     handle_uncorrectable_cram_upset(uint32_t frame_addr, uint8_t max_reloads = 2U) noexcept {
         for (const auto& r : cram_map_) {
@@ -212,7 +213,7 @@ public:
                     if (slot_reload_counts_[slot] > max_reloads) {
                         if (const auto* fo = find_failover(slot)) {
                             return RecoveryDirective{
-                                .level            = RecoveryLevel::ScosaFailoverSpareSlot,
+                                .level            = RecoveryLevel::FailoverSpareSlot,
                                 .source_id        = slot,
                                 .target_partition = fo->standby_partition,
                                 .primary_slot_id  = slot,
@@ -230,7 +231,7 @@ public:
                 };
             }
         }
-        // Uncorrectable upset in static Class B shell outside dynamic slots -> System Safe Mode!
+        // Uncorrectable upset in static shell outside mapped dynamic slots -> System Safe Mode
         return RecoveryDirective{.level = RecoveryLevel::SystemSafeMode};
     }
 
@@ -259,19 +260,19 @@ private:
         return false;
     }
 
-    [[nodiscard]] const ScosaFailoverEntry* find_failover(uint16_t primary_slot) const noexcept {
+    [[nodiscard]] const SlotFailoverEntry* find_failover(uint16_t primary_slot) const noexcept {
         for (const auto& f : failovers_) {
             if (f.enabled && f.primary_slot_id == primary_slot) return &f;
         }
         return nullptr;
     }
 
-    std::array<WpRuntime, MaxWps>            wps_{};
-    std::array<ApRuntime, MaxAps>            aps_{};
-    std::array<CramFrameRange, MaxSlots>     cram_map_{};
-    std::array<ScosaFailoverEntry, MaxSlots> failovers_{};
-    std::array<uint8_t, MaxSlots>            slot_reload_counts_{};
-    uint32_t                                 tripped_wp_mask_{0U};
+    std::array<WpRuntime, MaxWps>           wps_{};
+    std::array<ApRuntime, MaxAps>           aps_{};
+    std::array<CramFrameRange, MaxSlots>    cram_map_{};
+    std::array<SlotFailoverEntry, MaxSlots> failovers_{};
+    std::array<uint8_t, MaxSlots>           slot_reload_counts_{};
+    uint32_t                                tripped_wp_mask_{0U};
 };
 
 } // namespace strata::services::fdir

@@ -11,7 +11,7 @@ namespace {
 
 using namespace strata::literals;
 
-/// Deterministic splitmix64 PRNG for 100% reproducible STest-parity rule-based fuzzing.
+/// Deterministic splitmix64 PRNG for 100% reproducible seeded rule-based fuzzing.
 class SeededRng {
 public:
     explicit constexpr SeededRng(uint64_t seed) noexcept : state_(seed) {}
@@ -31,7 +31,7 @@ private:
     uint64_t state_;
 };
 
-/// Rule-based stateful fuzz test (JPL F' STest parity):
+/// Deterministic stateful rule-based fuzz test:
 /// Exercises 25,000 seeded random sequences of:
 ///  - Zero-copy DataTopic 1-to-N publishes across Guaranteed + BestEffort subscribers
 ///  - Random Class D consumer stalls, crashes, lease-timeout reclamations, and restarts

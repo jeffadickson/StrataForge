@@ -12,7 +12,7 @@
 
 namespace strata::runtime {
 
-/// Deterministic Cyclic Rate Group / Phased Window task descriptor (F' ActiveRateGroup + ActivePhaser parity).
+/// Deterministic Cyclic Rate Group / Phased Window task descriptor.
 /// Executes zero-thread, zero-vtable inside a hypervisor partition minor-frame loop.
 template <uint32_t PeriodTicks, uint32_t PhaseOffsetTicks, typename ComponentT,
           void (ComponentT::*Method)(TaiTimestamp) noexcept>

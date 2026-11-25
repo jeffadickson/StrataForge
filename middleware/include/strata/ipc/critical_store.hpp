@@ -11,7 +11,6 @@
 namespace strata {
 
 /// Ping-pong crash-atomic persistent state store (Primitive 5).
-/// Unifies NASA cFS Critical Data Store (CDS) and DLR ScOSA task checkpointing.
 /// Placed in a hypervisor-preserved ECC SRAM/OCM/FRAM region outside partition .bss so
 /// WarmStart / SEU restart / DFX slot failover restores verified state in < 2 ms.
 template <WirePod StateT>

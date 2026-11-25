@@ -1,0 +1,245 @@
+[DOCUMENT]
+TITLE: StrataForge Command and Data Handling Services Requirements Specification
+UID: STRATA-DOC-CDH
+PREFIX: STRATA-CDH-
+
+[GRAMMAR]
+ELEMENTS:
+- TAG: REQUIREMENT
+  FIELDS:
+  - TITLE: UID
+    TYPE: String
+    REQUIRED: True
+  - TITLE: STATUS
+    TYPE: String
+    REQUIRED: True
+  - TITLE: TITLE
+    TYPE: String
+    REQUIRED: True
+  - TITLE: STATEMENT
+    TYPE: String
+    REQUIRED: True
+  - TITLE: RATIONALE
+    TYPE: String
+    REQUIRED: True
+  - TITLE: VERIFICATION_METHOD
+    TYPE: String
+    REQUIRED: True
+  - TITLE: ARTIFACT
+    TYPE: String
+    REQUIRED: False
+  RELATIONS:
+  - TYPE: Parent
+
+[[SECTION]]
+TITLE: Command Dispatch, Telemetry, Sequencing, Time, and Flight Memory Operations
+
+[REQUIREMENT]
+UID: STRATA-CDH-001
+STATUS: Implemented
+TITLE: Four-Stage Command Verification Tracking
+STATEMENT: >>>
+The command service (CmdService) shall track in-flight commands by monotonic sequence ID and emit structured four-stage verification reports (Accepted, Started, Progress with step/percentage, and Completed with CmdResult) into a lock-free report ring.
+<<<
+RATIONALE: >>>
+Long-running instrument operations such as partial FPGA reconfiguration, focal-plane cooldowns, and self-tests require granular progress visibility rather than a single final completion code.
+<<<
+VERIFICATION_METHOD: Test
+ARTIFACT: services/cdh/include/strata/services/cdh/cmd_service.hpp
+RELATIONS:
+- TYPE: Parent
+  VALUE: STRATA-SYS-001
+
+[REQUIREMENT]
+UID: STRATA-CDH-002
+STATUS: Implemented
+TITLE: Per-Partition Command Authorization and SDLS Enforcement
+STATEMENT: >>>
+The command service shall validate every incoming command against a static per-source-partition opcode allowlist and mandatory SDLS authentication flag before accepting or forwarding the command to any target partition.
+<<<
+RATIONALE: >>>
+Role-based opcode filtering prevents unprivileged autonomy or science partitions from invoking safety-critical spacecraft commands.
+<<<
+VERIFICATION_METHOD: Test
+ARTIFACT: services/cdh/include/strata/services/cdh/cmd_service.hpp
+RELATIONS:
+- TYPE: Parent
+  VALUE: STRATA-SYS-003
+
+[REQUIREMENT]
+UID: STRATA-CDH-003
+STATUS: Implemented
+TITLE: Compile-Time-Sized Telemetry Packetizer
+STATEMENT: >>>
+The telemetry packetizer (TlmPacketizer) shall bind each packet APID to a compile-time-verified WirePod struct layout checked via static_assert against the CCSDS Space Packet MTU and sample directly from lock-free Seqlock Blackboards without dynamic per-field buffer copies.
+<<<
+RATIONALE: >>>
+Compile-time struct layout verification makes fixed-slot buffer overflow corruption across adjacent telemetry channels impossible.
+<<<
+VERIFICATION_METHOD: Test
+ARTIFACT: services/cdh/include/strata/services/cdh/telemetry.hpp
+RELATIONS:
+- TYPE: Parent
+  VALUE: STRATA-SYS-004
+
+[REQUIREMENT]
+UID: STRATA-CDH-004
+STATUS: Planned
+TITLE: On-Demand Single-Channel Telemetry Snapshot Query
+STATEMENT: >>>
+The telemetry service shall provide an on-demand channel query adapter allowing ground operators or onboard autonomy to request the latest individual Blackboard snapshot for a specific channel ID outside the periodic packetizer cadence.
+<<<
+RATIONALE: >>>
+During commissioning and anomaly triage, operators need immediate ad-hoc sampling of individual diagnostic channels without reconfiguring packet schedules.
+<<<
+VERIFICATION_METHOD: Test
+ARTIFACT: services/cdh/include/strata/services/cdh/
+RELATIONS:
+- TYPE: Parent
+  VALUE: STRATA-SYS-001
+
+[REQUIREMENT]
+UID: STRATA-CDH-005
+STATUS: Implemented
+TITLE: Online Parameter Statistics Collector
+STATEMENT: >>>
+The telemetry service shall provide an O(1)-RAM online StatsCollector using Welford's algorithm to compute min, max, mean, variance, and sample count over high-rate telemetry signals for compact periodic downlink summaries.
+<<<
+RATIONALE: >>>
+Computing summary statistics on board captures transient power, thermal, and timing excursions while reducing downlink bandwidth by more than an order of magnitude.
+<<<
+VERIFICATION_METHOD: Test
+ARTIFACT: services/cdh/include/strata/services/cdh/telemetry.hpp
+RELATIONS:
+- TYPE: Parent
+  VALUE: STRATA-SYS-006
+
+[REQUIREMENT]
+UID: STRATA-CDH-006
+STATUS: Implemented
+TITLE: Dynamic Per-APID Telemetry Forwarding Control
+STATEMENT: >>>
+The telemetry service shall provide a ForwardingControl table enabling ground commands or onboard sequences to switch any APID dynamically among Muted, StoreOnly, LiveRf, and LiveAndStore modes.
+<<<
+RATIONALE: >>>
+Missions with intermittent contact passes and variable RF link margins require dynamic control over real-time vs. store-and-forward telemetry routing.
+<<<
+VERIFICATION_METHOD: Test
+ARTIFACT: services/cdh/include/strata/services/cdh/telemetry.hpp
+RELATIONS:
+- TYPE: Parent
+  VALUE: STRATA-SYS-001
+
+[REQUIREMENT]
+UID: STRATA-CDH-007
+STATUS: Implemented
+TITLE: Multi-Slot Concurrent Command Sequencer
+STATEMENT: >>>
+The command sequencer (SeqEngine) shall execute multiple concurrent CRC-32C-verified binary command sequences supporting Immediate, Relative-delay, and Absolute-TAI execution steps, aborting a sequence automatically on step failure and exposing an immediate abort_all hook for safe-mode entry.
+<<<
+RATIONALE: >>>
+Deterministic onboard command sequencing automates science campaigns and eclipse transitions during out-of-contact orbital segments.
+<<<
+VERIFICATION_METHOD: Test
+ARTIFACT: services/cdh/include/strata/services/cdh/sequencer.hpp
+RELATIONS:
+- TYPE: Parent
+  VALUE: STRATA-SYS-001
+
+[REQUIREMENT]
+UID: STRATA-CDH-008
+STATUS: Implemented
+TITLE: Allowlisted On-Orbit Memory Dwell
+STATEMENT: >>>
+The flight memory service (FlightMemoryOps) shall support surgical diagnostic Memory Dwell reads strictly bounded by a static authorized address-range allowlist, returning PermissionDenied on any out-of-range or unmapped address.
+<<<
+RATIONALE: >>>
+On-orbit debugging requires inspecting authorized RAM and hardware register windows without risking bus faults from operator typos.
+<<<
+VERIFICATION_METHOD: Test
+ARTIFACT: services/cdh/include/strata/services/cdh/flight_ops.hpp
+RELATIONS:
+- TYPE: Parent
+  VALUE: STRATA-SYS-003
+
+[REQUIREMENT]
+UID: STRATA-CDH-009
+STATUS: Implemented
+TITLE: Two-Step Authenticated Surgical Memory Patch
+STATEMENT: >>>
+The flight memory service shall enforce a two-step arm_patch followed by commit_patch workflow requiring both write-allowlist authorization and matching CRC-32C verification at arm and commit before modifying any authorized RAM region.
+<<<
+RATIONALE: >>>
+Two-step CRC-confirmed patching enables emergency on-orbit table or flight fixes while preventing accidental corruption from single-command errors.
+<<<
+VERIFICATION_METHOD: Test
+ARTIFACT: services/cdh/include/strata/services/cdh/flight_ops.hpp
+RELATIONS:
+- TYPE: Parent
+  VALUE: STRATA-SYS-003
+
+[REQUIREMENT]
+UID: STRATA-CDH-010
+STATUS: Implemented
+TITLE: Background Immutable Software Segment Checksum Scrubber
+STATEMENT: >>>
+The flight memory service shall periodically compute CRC-32C checksums over registered immutable code, constant data, and routing-table segments during background slack time and immediately report the corrupted segment ID upon any mismatch.
+<<<
+RATIONALE: >>>
+Background software scrubbing complements hardware FPGA configuration scrubbing by catching radiation-induced bit-flips in instruction memory and static tables.
+<<<
+VERIFICATION_METHOD: Test
+ARTIFACT: services/cdh/include/strata/services/cdh/flight_ops.hpp
+RELATIONS:
+- TYPE: Parent
+  VALUE: STRATA-SYS-007
+
+[REQUIREMENT]
+UID: STRATA-CDH-011
+STATUS: Planned
+TITLE: Time Base Converter and 1PPS Drift Monitor
+STATEMENT: >>>
+The C&DH time service shall provide a deterministic TimeConverter translating among hardware TAI nanoseconds, Spacecraft Clock (SCLK) coarse/fine ticks, and UTC/mission epoch with leap-second offset tables and 1PPS clock-drift anomaly monitoring.
+<<<
+RATIONALE: >>>
+Science data products and CCSDS ground systems require exact bidirectional correlation between onboard TAI counters and ground UTC/SCLK epochs.
+<<<
+VERIFICATION_METHOD: Test
+ARTIFACT: services/cdh/include/strata/services/cdh/
+RELATIONS:
+- TYPE: Parent
+  VALUE: STRATA-SYS-006
+
+[REQUIREMENT]
+UID: STRATA-CDH-012
+STATUS: Partially Implemented
+TITLE: Live Hardware/Software Build Identity and System Resource Monitor
+STATEMENT: >>>
+The C&DH system service shall report BuildManifestInfo combining firmware git SHA, ABI version, compile-time MANIFEST_HASH, and live hardware SCSR identities alongside a SysMonitor Blackboard publishing per-partition CPU headroom, frame jitter min/max, DDR pool high-water marks, NoC stalls, and cumulative SEU counts.
+<<<
+RATIONALE: >>>
+Operators must continuously verify both active software and active FPGA bitstream identities while tracking thermal, CPU, memory, and radiation margins.
+<<<
+VERIFICATION_METHOD: Test
+ARTIFACT: services/cdh/include/strata/services/cdh/flight_ops.hpp
+RELATIONS:
+- TYPE: Parent
+  VALUE: STRATA-SYS-005
+
+[REQUIREMENT]
+UID: STRATA-CDH-013
+STATUS: Planned
+TITLE: Optional Compile-Time Console Diagnostic Text Sink
+STATEMENT: >>>
+The C&DH service shall provide an optional, compile-time-disableable TextLogSink converting binary EventRecords into bounded ASCII lines over UART, JTAG/SWO, or host stdout for benchtop bring-up without imposing string-formatting overhead on flight builds.
+<<<
+RATIONALE: >>>
+Human-readable console logging accelerates FlatSat and SIL debugging while remaining zero-overhead when compiled out for flight.
+<<<
+VERIFICATION_METHOD: Demonstration
+ARTIFACT: services/cdh/include/strata/services/cdh/
+RELATIONS:
+- TYPE: Parent
+  VALUE: STRATA-SYS-008
+
+[[/SECTION]]

@@ -92,7 +92,7 @@ public:
         }
     }
 
-    /// Hubris-style crash-safe lease reclamation: revokes expired Class D leases past deadline.
+    /// Crash-safe lease reclamation: revokes expired Class D leases past their deadline.
     uint32_t reclaim_expired_leases(TaiTimestamp now) noexcept {
         uint32_t reclaimed = 0U;
         for (size_t i = 0U; i < SlotCount; ++i) {
@@ -183,7 +183,7 @@ private:
     std::atomic<uint32_t>           reclaimed_count_{0U};
 };
 
-/// Move-only, [[nodiscard]] linear RAII Producer FrameLease (replaces leak-prone F' Fw::Buffer).
+/// Move-only, [[nodiscard]] linear RAII Producer FrameLease.
 /// Destructor automatically returns the slot to FramePool if not transferred via DataTopic::publish().
 template <typename PoolT>
 class [[nodiscard]] FrameLease {

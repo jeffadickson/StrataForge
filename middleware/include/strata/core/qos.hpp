@@ -7,13 +7,13 @@
 
 namespace strata {
 
-/// Static DDS-inspired Durability contract (zero runtime discovery overhead).
+/// Static compile-time Durability contract (zero runtime discovery overhead).
 enum class Durability : uint8_t {
     Volatile       = 0U, // Reader only accepts samples published after attach/read baseline
     TransientLocal = 1U, // Restarted partition immediately sees last valid published snapshot
 };
 
-/// Static DDS-inspired Reliability & back-pressure contract for rings and topics.
+/// Static compile-time Reliability & back-pressure contract for rings and topics.
 enum class Reliability : uint8_t {
     Guaranteed           = 0U, // Reject new writes with Status::Full (Class B/C lossless paths)
     BestEffortDropOldest = 1U, // Overwrite or skip stalled Class D consumer without blocking producer

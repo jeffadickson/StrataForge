@@ -11,7 +11,7 @@
 
 namespace strata::services::cdh {
 
-/// 4-Stage ECSS PUS ST[01] Command Verification Report emitted to ground / sequence engine.
+/// 4-stage Command Verification Report emitted to ground or command sequencer.
 struct CmdVerificationReport {
     uint32_t  cmd_seq{0U};
     uint16_t  opcode{0U};
@@ -25,7 +25,7 @@ struct CmdVerificationReport {
 
 static_assert(WirePod<CmdVerificationReport>);
 
-/// Partition RBAC command policy (prevents Class D AutonomySandbox from invoking critical opcodes).
+/// Partition RBAC command policy (prevents unprivileged partitions from invoking critical opcodes).
 struct PartitionAuthEntry {
     uint8_t  source_partition{0U};
     uint16_t min_opcode{0U};
@@ -34,7 +34,7 @@ struct PartitionAuthEntry {
     bool     enabled{false};
 };
 
-/// Class B Command Service unifying JPL F' CmdDispatcher/CmdSplitter + ESA PUS ST[01] 4-stage acks.
+/// Command Service with partition RBAC, SDLS enforcement, and 4-stage verification reports.
 template <size_t MaxInFlight = 16U, size_t MaxAuthRules = 16U, size_t ReportRingDepth = 32U>
     requires PowerOfTwo<ReportRingDepth>
 class CmdService {
@@ -53,7 +53,7 @@ public:
         return Status::Full;
     }
 
-    /// Stage 1 (ST[01] Acceptance): Verify source RBAC + SDLS auth and register in-flight tracking.
+    /// Stage 1 (Acceptance): Verify source RBAC + SDLS auth and register in-flight tracking.
     [[nodiscard]] Expected<uint32_t, CmdResult>
     accept_command(uint8_t source_partition, uint8_t target_partition, uint16_t opcode,
                    bool sdls_authenticated, TaiTimestamp now) noexcept {
@@ -83,7 +83,7 @@ public:
         return seq;
     }
 
-    /// Stage 2 (ST[01] Execution Started).
+    /// Stage 2 (Execution Started).
     [[nodiscard]] Status report_started(uint32_t cmd_seq, TaiTimestamp now) noexcept {
         auto* slot = find_inflight(cmd_seq);
         if (slot == nullptr) return Status::InvalidArg;
@@ -93,7 +93,7 @@ public:
         return Status::Ok;
     }
 
-    /// Stage 3 (ST[01] Execution Progress — e.g., DFX bitstream load 50%, SBIT 90%).
+    /// Stage 3 (Execution Progress — e.g., DFX bitstream load 50%, SBIT 90%).
     [[nodiscard]] Status report_progress(uint32_t cmd_seq, uint8_t step, uint8_t pct,
                                          TaiTimestamp now) noexcept {
         auto* slot = find_inflight(cmd_seq);
@@ -104,7 +104,7 @@ public:
         return Status::Ok;
     }
 
-    /// Stage 4 (ST[01] Execution Completed — releases in-flight tracking slot).
+    /// Stage 4 (Execution Completed — releases in-flight tracking slot).
     [[nodiscard]] Status report_completed(uint32_t cmd_seq, CmdResult final_res,
                                           TaiTimestamp now) noexcept {
         auto* slot = find_inflight(cmd_seq);

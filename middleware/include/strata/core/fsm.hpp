@@ -9,7 +9,7 @@
 namespace strata {
 
 /// Single declarative transition entry for zero-allocation compile-time Finite State Machines.
-/// Provides FPP State Machine parity in pure C++20 with zero external codegen and zero vtables.
+/// Implemented in pure C++20 with zero external codegen and zero vtables.
 template <typename Context, typename StateEnum, typename EventEnum>
     requires(std::is_enum_v<StateEnum> && std::is_enum_v<EventEnum>)
 struct Transition {

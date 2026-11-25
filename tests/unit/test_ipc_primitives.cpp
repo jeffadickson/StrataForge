@@ -130,7 +130,7 @@ int test_spsc_channel() {
     CHECK(sum == 30U);
     CHECK(cons.available() == 2U);
 
-    // Hubris generation restart: consumer restarts -> producer gets StaleGeneration until acked
+    // Partition generation restart: consumer restarts -> producer gets StaleGeneration until acked
     cons.advance_consumer_generation(strata::GenId{2U});
     CHECK(prod.try_push(60U) == strata::Status::StaleGeneration);
     prod.acknowledge_consumer_generation(strata::GenId{2U});
