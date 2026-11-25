@@ -19,6 +19,11 @@ add_executable(test_hw_and_runtime unit/test_hw_and_runtime.cpp)
 target_link_libraries(test_hw_and_runtime PRIVATE strata::middleware)
 add_test(NAME strata.unit.hw_and_runtime COMMAND test_hw_and_runtime)
 
+# Bare-Metal Type-1 Hypervisor Core & Multi-Arch Backend Tests
+add_executable(test_hypervisor unit/test_hypervisor.cpp)
+target_link_libraries(test_hypervisor PRIVATE strata::middleware)
+add_test(NAME strata.unit.hypervisor COMMAND test_hypervisor)
+
 # Flight Services Unit & Fault-Injection Tests
 add_executable(test_comms_ccsds_sdls unit/test_comms_ccsds_sdls.cpp)
 target_link_libraries(test_comms_ccsds_sdls PRIVATE strata::services)
@@ -36,12 +41,16 @@ add_executable(test_storage_and_autonomy unit/test_storage_and_autonomy.cpp)
 target_link_libraries(test_storage_and_autonomy PRIVATE strata::services)
 add_test(NAME strata.unit.storage_and_autonomy COMMAND test_storage_and_autonomy)
 
+add_executable(test_extended_services unit/test_extended_services.cpp)
+target_link_libraries(test_extended_services PRIVATE strata::services)
+add_test(NAME strata.unit.extended_services COMMAND test_extended_services)
+
 # Deterministic Seeded Rule-Based Fuzzer
 add_executable(test_rule_fuzzer rule_fuzzer/test_rule_fuzzer.cpp)
 target_link_libraries(test_rule_fuzzer PRIVATE strata::services)
 add_test(NAME strata.fuzzer.rule_engine COMMAND test_rule_fuzzer)
 
-# Single-Source-of-Truth Manifest Static Verification
+# Single-Source-of-Truth Manifest Static Verification, Multi-Domain Codegen & StrictDoc Graph
 find_package(Python3 COMPONENTS Interpreter)
 if(Python3_Interpreter_FOUND)
     add_test(
@@ -57,10 +66,49 @@ if(Python3_Interpreter_FOUND)
                 ${CMAKE_SOURCE_DIR}/manifests/examples/kintex_dual_instrument.toml
     )
     add_test(
+        NAME strata.codegen.multi_domain_and_xtce
+        COMMAND ${Python3_EXECUTABLE}
+                ${CMAKE_SOURCE_DIR}/tools/strata-gen/test_strata_gen.py
+    )
+    add_test(
         NAME strata.requirements.strictdoc_graph
         COMMAND ${Python3_EXECUTABLE}
                 ${CMAKE_SOURCE_DIR}/tools/check_sdoc.py
                 ${CMAKE_SOURCE_DIR}/requirements
                 ${CMAKE_SOURCE_DIR}
     )
+endif()
+
+# Verilator Live SystemVerilog RTL Co-Simulation (STRATA-VER-003, STRATA-RTL-001..005)
+find_package(verilator QUIET HINTS $ENV{VERILATOR_ROOT})
+if(verilator_FOUND)
+    add_library(strata_verilated_rtl STATIC)
+    verilate(strata_verilated_rtl
+        SOURCES
+            ${CMAKE_SOURCE_DIR}/rtl/common/scsr_slave.sv
+            ${CMAKE_SOURCE_DIR}/rtl/common/sg_dma_shaper.sv
+            ${CMAKE_SOURCE_DIR}/rtl/versal/versal_platform_shell.sv
+        INCLUDE_DIRS ${CMAKE_SOURCE_DIR}/rtl/common
+        TOP_MODULE versal_platform_shell
+        PREFIX Vversal_platform_shell
+        VERILATOR_ARGS -Wall -GMANIFEST_HASH_LO=32'h9243B827 -GMANIFEST_HASH_HI=32'h14A6F9D1
+    )
+    verilate(strata_verilated_rtl
+        SOURCES
+            ${CMAKE_SOURCE_DIR}/rtl/common/scsr_slave.sv
+            ${CMAKE_SOURCE_DIR}/rtl/common/sg_dma_shaper.sv
+            ${CMAKE_SOURCE_DIR}/rtl/kintex/kintex_platform_shell.sv
+        INCLUDE_DIRS ${CMAKE_SOURCE_DIR}/rtl/common
+        TOP_MODULE kintex_platform_shell
+        PREFIX Vkintex_platform_shell
+        VERILATOR_ARGS -Wall -GMANIFEST_HASH_LO=32'h9243B827 -GMANIFEST_HASH_HI=32'h14A6F9D1
+    )
+
+    add_executable(test_verilator_scsr_dma verilator_hil/test_verilator_scsr_dma.cpp)
+    target_include_directories(test_verilator_scsr_dma PRIVATE
+        ${CMAKE_SOURCE_DIR}/middleware/include
+        ${CMAKE_SOURCE_DIR}/hypervisor/include
+    )
+    target_link_libraries(test_verilator_scsr_dma PRIVATE strata_verilated_rtl)
+    add_test(NAME strata.hil.verilator_scsr_dma COMMAND test_verilator_scsr_dma)
 endif()

@@ -6,6 +6,7 @@
 `ifndef STRATA_SCSR_DEFS_SVH
 `define STRATA_SCSR_DEFS_SVH
 
+/* verilator lint_off UNUSEDPARAM */
 localparam logic [31:0] STRATA_SCSR_MAGIC            = 32'h5354_5241; // "STRA"
 localparam logic [15:0] STRATA_SCSR_ABI_MAJOR        = 16'h0000;
 localparam logic [15:0] STRATA_SCSR_ABI_MINOR        = 16'h0001;
@@ -32,5 +33,6 @@ localparam logic [31:0] STRATA_STATE_STANDBY         = 32'd3;
 localparam logic [31:0] STRATA_STATE_ACTIVE          = 32'd4;
 localparam logic [31:0] STRATA_STATE_QUIESCING       = 32'd5;
 localparam logic [31:0] STRATA_STATE_FAULTED         = 32'd6;
+/* verilator lint_on UNUSEDPARAM */
 
 `endif // STRATA_SCSR_DEFS_SVH

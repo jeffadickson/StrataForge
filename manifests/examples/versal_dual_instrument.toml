@@ -10,6 +10,8 @@ criticality = "CLASS_B"
 cpu = "APU_CORE0"
 budget_us = 2_000
 cds_bytes = 16_384
+ram_base = 0x0000_0000_1000_0000
+ram_bytes = 2_097_152
 
 [[partitions]]
 id = "fdir_slot_mgr_b"
@@ -17,6 +19,8 @@ criticality = "CLASS_B"
 cpu = "RPU_LOCKSTEP"
 budget_us = 2_000
 cds_bytes = 16_384
+ram_base = 0x0000_0000_1100_0000
+ram_bytes = 1_048_576
 
 [[partitions]]
 id = "storage_c"
@@ -24,6 +28,8 @@ criticality = "CLASS_C"
 cpu = "APU_CORE1"
 budget_us = 2_500
 cds_bytes = 32_768
+ram_base = 0x0000_0000_1200_0000
+ram_bytes = 4_194_304
 
 [[partitions]]
 id = "hyperspec_d"
@@ -31,6 +37,8 @@ criticality = "CLASS_D"
 cpu = "APU_CORE1"
 budget_us = 2_000
 cds_bytes = 8_192
+ram_base = 0x0000_0000_1300_0000
+ram_bytes = 2_097_152
 
 [[partitions]]
 id = "sar_dfx_d"
@@ -38,6 +46,8 @@ criticality = "CLASS_D"
 cpu = "APU_CORE1"
 budget_us = 1_500
 cds_bytes = 8_192
+ram_base = 0x0000_0000_1400_0000
+ram_bytes = 2_097_152
 
 [[hw_slots]]
 slot_id = 0
@@ -74,3 +84,46 @@ slot_bytes = 4_194_304
 writer_slot = 0
 readers = ["storage_c"]
 lease_timeout_ms = 50
+
+[[pipelines]]
+name = "hsi_science_dag"
+stages = ["slot:hyperspec_spatial", "slot:aie_denoise", "part:storage_c"]
+
+[[commands]]
+opcode = 0x0101
+name = "NOOP"
+owner_partition = "cdh_b"
+min_role = "OPERATOR"
+payload_bytes = 0
+
+[[commands]]
+opcode = 0x0201
+name = "HSI_SET_INTEGRATION"
+owner_partition = "hyperspec_d"
+min_role = "OPERATOR"
+payload_bytes = 4
+
+[[commands]]
+opcode = 0x0301
+name = "SLOT_RELOAD_DFX"
+owner_partition = "fdir_slot_mgr_b"
+min_role = "FLIGHT_DIRECTOR"
+payload_bytes = 8
+
+[[telemetry]]
+channel_id = 0x0001
+name = "CDH_UPTIME_MS"
+owner_partition = "cdh_b"
+type = "uint64"
+unit = "ms"
+cal_c0 = 0.0
+cal_c1 = 1.0
+
+[[telemetry]]
+channel_id = 0x0010
+name = "HSI_DETECTOR_TEMP_K"
+owner_partition = "hyperspec_d"
+type = "uint16"
+unit = "K"
+cal_c0 = 180.0
+cal_c1 = 0.05

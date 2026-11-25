@@ -84,7 +84,7 @@ RELATIONS:
 
 [REQUIREMENT]
 UID: STRATA-COM-004
-STATUS: Planned
+STATUS: Implemented
 TITLE: CCSDS TM, AOS, and USLP Downlink Transfer Framers
 STATEMENT: >>>
 The communications service shall provide configurable downlink transfer framers supporting CCSDS TM (132.0-B-3), AOS (732.0-B-4), and USLP (732.1-B-2) transfer frames with master/virtual channel frame counters, first-header pointers, and optional hardware FECF/coding offload.
@@ -93,14 +93,14 @@ RATIONALE: >>>
 High-rate instrument payloads require AOS and USLP framing in addition to classic TM transfer frames for optical and Ka-band links.
 <<<
 VERIFICATION_METHOD: Test
-ARTIFACT: services/comms/include/strata/services/comms/
+ARTIFACT: services/comms/include/strata/services/comms/downlink_framers.hpp
 RELATIONS:
 - TYPE: Parent
   VALUE: STRATA-SYS-006
 
 [REQUIREMENT]
 UID: STRATA-COM-005
-STATUS: Planned
+STATUS: Implemented
 TITLE: Byte-Stream Frame Accumulator and Sync Resynchronization
 STATEMENT: >>>
 The communications service shall provide a bounded zero-heap FrameAccumulator that extracts complete transfer frames from raw byte streams (UART, SpaceWire, RF modem) using Attached Sync Marker (ASM) search and bounded resynchronization recovery on corrupted headers.
@@ -109,7 +109,7 @@ RATIONALE: >>>
 Continuous radio and serial links deliver unaligned byte streams that require deterministic frame boundary recovery after signal dropouts.
 <<<
 VERIFICATION_METHOD: Test
-ARTIFACT: services/comms/include/strata/services/comms/
+ARTIFACT: services/comms/include/strata/services/comms/downlink_framers.hpp
 RELATIONS:
 - TYPE: Parent
   VALUE: STRATA-SYS-003
@@ -164,7 +164,7 @@ RELATIONS:
 
 [REQUIREMENT]
 UID: STRATA-COM-009
-STATUS: Planned
+STATUS: Implemented
 TITLE: Link Back-Pressure ComRetry and Zero-Copy ComTee Recorder Tap
 STATEMENT: >>>
 The communications service shall provide a bounded ComRetry back-pressure adapter for busy radio drivers and a zero-copy ComTee tap that mirrors uplink/downlink FrameLease descriptors to an onboard flight recorder without copying packet payloads.
@@ -173,14 +173,14 @@ RATIONALE: >>>
 Decoupled retry handling prevents silent packet drops on bursty radio interfaces while zero-copy tee logging provides complete post-pass anomaly diagnostics.
 <<<
 VERIFICATION_METHOD: Test
-ARTIFACT: services/comms/include/strata/services/comms/
+ARTIFACT: services/comms/include/strata/services/comms/link_adapters.hpp
 RELATIONS:
 - TYPE: Parent
   VALUE: STRATA-SYS-006
 
 [REQUIREMENT]
 UID: STRATA-COM-010
-STATUS: Planned
+STATUS: Implemented
 TITLE: Multi-Board InterNodeBridge Transport
 STATEMENT: >>>
 The communications service shall provide a zero-heap InterNodeBridge framing control rings and descriptor transfers across physical multi-board links (SpaceWire, SpaceFibre, MIL-STD-1553, Ethernet, or PCIe DMA) for distributed spacecraft avionics.
@@ -189,7 +189,7 @@ RATIONALE: >>>
 Multi-board spacecraft architectures require transparent bridging between separate FPGA/OBC nodes while preserving strong typing and generation validation.
 <<<
 VERIFICATION_METHOD: Demonstration
-ARTIFACT: services/comms/include/strata/services/comms/
+ARTIFACT: services/comms/include/strata/services/comms/link_adapters.hpp
 RELATIONS:
 - TYPE: Parent
   VALUE: STRATA-SYS-002

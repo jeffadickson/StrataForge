@@ -286,7 +286,7 @@ RELATIONS:
 
 [REQUIREMENT]
 UID: STRATA-MW-016
-STATUS: Planned
+STATUS: Implemented
 TITLE: Composable Per-Partition Subtopology Bundles
 STATEMENT: >>>
 The middleware shall provide parameterized C++20 template Subtopology bundles (such as CdhBundle, CommsBundle, StorageBundle, and FdirBundle) allowing distinct partitions within the same mission build to instantiate independent queue depths, pool sizes, and safety profiles without global configuration collisions.
@@ -295,7 +295,7 @@ RATIONALE: >>>
 Per-partition template parameterization eliminates monolithic single-config build bottlenecks while preserving rapid mission assembly.
 <<<
 VERIFICATION_METHOD: Inspection
-ARTIFACT: middleware/include/strata/runtime/
+ARTIFACT: middleware/include/strata/runtime/subtopology.hpp
 RELATIONS:
 - TYPE: Parent
   VALUE: STRATA-SYS-001

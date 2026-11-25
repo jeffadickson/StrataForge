@@ -84,7 +84,7 @@ RELATIONS:
 
 [REQUIREMENT]
 UID: STRATA-CDH-004
-STATUS: Planned
+STATUS: Implemented
 TITLE: On-Demand Single-Channel Telemetry Snapshot Query
 STATEMENT: >>>
 The telemetry service shall provide an on-demand channel query adapter allowing ground operators or onboard autonomy to request the latest individual Blackboard snapshot for a specific channel ID outside the periodic packetizer cadence.
@@ -93,7 +93,7 @@ RATIONALE: >>>
 During commissioning and anomaly triage, operators need immediate ad-hoc sampling of individual diagnostic channels without reconfiguring packet schedules.
 <<<
 VERIFICATION_METHOD: Test
-ARTIFACT: services/cdh/include/strata/services/cdh/
+ARTIFACT: services/cdh/include/strata/services/cdh/telemetry_query.hpp
 RELATIONS:
 - TYPE: Parent
   VALUE: STRATA-SYS-001
@@ -196,7 +196,7 @@ RELATIONS:
 
 [REQUIREMENT]
 UID: STRATA-CDH-011
-STATUS: Planned
+STATUS: Implemented
 TITLE: Time Base Converter and 1PPS Drift Monitor
 STATEMENT: >>>
 The C&DH time service shall provide a deterministic TimeConverter translating among hardware TAI nanoseconds, Spacecraft Clock (SCLK) coarse/fine ticks, and UTC/mission epoch with leap-second offset tables and 1PPS clock-drift anomaly monitoring.
@@ -205,14 +205,14 @@ RATIONALE: >>>
 Science data products and CCSDS ground systems require exact bidirectional correlation between onboard TAI counters and ground UTC/SCLK epochs.
 <<<
 VERIFICATION_METHOD: Test
-ARTIFACT: services/cdh/include/strata/services/cdh/
+ARTIFACT: services/cdh/include/strata/services/cdh/time_and_sysmon.hpp
 RELATIONS:
 - TYPE: Parent
   VALUE: STRATA-SYS-006
 
 [REQUIREMENT]
 UID: STRATA-CDH-012
-STATUS: Partially Implemented
+STATUS: Implemented
 TITLE: Live Hardware/Software Build Identity and System Resource Monitor
 STATEMENT: >>>
 The C&DH system service shall report BuildManifestInfo combining firmware git SHA, ABI version, compile-time MANIFEST_HASH, and live hardware SCSR identities alongside a SysMonitor Blackboard publishing per-partition CPU headroom, frame jitter min/max, DDR pool high-water marks, NoC stalls, and cumulative SEU counts.
@@ -221,14 +221,14 @@ RATIONALE: >>>
 Operators must continuously verify both active software and active FPGA bitstream identities while tracking thermal, CPU, memory, and radiation margins.
 <<<
 VERIFICATION_METHOD: Test
-ARTIFACT: services/cdh/include/strata/services/cdh/flight_ops.hpp
+ARTIFACT: services/cdh/include/strata/services/cdh/time_and_sysmon.hpp
 RELATIONS:
 - TYPE: Parent
   VALUE: STRATA-SYS-005
 
 [REQUIREMENT]
 UID: STRATA-CDH-013
-STATUS: Planned
+STATUS: Implemented
 TITLE: Optional Compile-Time Console Diagnostic Text Sink
 STATEMENT: >>>
 The C&DH service shall provide an optional, compile-time-disableable TextLogSink converting binary EventRecords into bounded ASCII lines over UART, JTAG/SWO, or host stdout for benchtop bring-up without imposing string-formatting overhead on flight builds.
@@ -237,7 +237,7 @@ RATIONALE: >>>
 Human-readable console logging accelerates FlatSat and SIL debugging while remaining zero-overhead when compiled out for flight.
 <<<
 VERIFICATION_METHOD: Demonstration
-ARTIFACT: services/cdh/include/strata/services/cdh/
+ARTIFACT: services/cdh/include/strata/services/cdh/time_and_sysmon.hpp
 RELATIONS:
 - TYPE: Parent
   VALUE: STRATA-SYS-008

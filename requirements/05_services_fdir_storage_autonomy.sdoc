@@ -68,7 +68,7 @@ RELATIONS:
 
 [REQUIREMENT]
 UID: STRATA-FDIR-003
-STATUS: Planned
+STATUS: Implemented
 TITLE: Dual-Layer Partition Heartbeat and Hardware Slot Watchdog Monitor
 STATEMENT: >>>
 The FDIR subsystem shall provide a HealthMonitor that monitors monotonic per-partition Blackboard heartbeats and hypervisor CPU overrun flags in software while verifying that every active PL slot kicks its hardware SCSR.WDT_RELOAD timer within its configured timeout window.
@@ -77,14 +77,14 @@ RATIONALE: >>>
 Combining passive Blackboard liveness monitoring with autonomous hardware slot watchdogs prevents intrusive ping traffic while guaranteeing safe hardware quiesce if a guest hangs.
 <<<
 VERIFICATION_METHOD: Test
-ARTIFACT: services/fdir_slot_mgr/include/strata/services/fdir/
+ARTIFACT: services/fdir_slot_mgr/include/strata/services/fdir/health_and_fault_router.hpp
 RELATIONS:
 - TYPE: Parent
   VALUE: STRATA-SYS-003
 
 [REQUIREMENT]
 UID: STRATA-FDIR-004
-STATUS: Planned
+STATUS: Implemented
 TITLE: Isolated FaultRouter for Partition Traps and Assertions
 STATEMENT: >>>
 The FDIR subsystem shall provide a FaultRouter receiving hypervisor exception dumps and guest FaultReport notifications, logging compact crash records, and executing isolated partition restart for Class C/D faults while reserving spacecraft safe-mode escalation exclusively for unrecoverable Class B TCB faults.
@@ -93,7 +93,7 @@ RATIONALE: >>>
 An assertion or fault inside a science payload must never propagate into a spacecraft-wide reboot.
 <<<
 VERIFICATION_METHOD: Test
-ARTIFACT: services/fdir_slot_mgr/include/strata/services/fdir/
+ARTIFACT: services/fdir_slot_mgr/include/strata/services/fdir/health_and_fault_router.hpp
 RELATIONS:
 - TYPE: Parent
   VALUE: STRATA-SYS-003
@@ -132,7 +132,7 @@ RELATIONS:
 
 [REQUIREMENT]
 UID: STRATA-FDIR-007
-STATUS: Planned
+STATUS: Implemented
 TITLE: Authenticated End-to-End DFX and AIE SlotManager
 STATEMENT: >>>
 The SlotManager shall orchestrate the complete hardware slot lifecycle (Unloaded -> Loading -> Sbit -> Standby -> Active -> Quiescing -> Faulted), enforcing cryptographic digest verification (SHA-384 / RSA-4096 or ECDSA-P384), bounded quiesce timeouts, hardware NoC INI or DFX Decoupler isolation, Versal PMC PLM or Kintex DMA ICAPE3 loading, and SCSR MANIFEST_HASH validation.
@@ -141,7 +141,7 @@ RATIONALE: >>>
 Centralizing authenticated partial reconfiguration in a single Class B SlotManager prevents unauthorized or corrupted bitstreams from compromising the shared FPGA fabric.
 <<<
 VERIFICATION_METHOD: Demonstration
-ARTIFACT: services/fdir_slot_mgr/include/strata/services/fdir/
+ARTIFACT: services/fdir_slot_mgr/include/strata/services/fdir/slot_manager.hpp
 RELATIONS:
 - TYPE: Parent
   VALUE: STRATA-SYS-002
@@ -185,7 +185,7 @@ RELATIONS:
 
 [REQUIREMENT]
 UID: STRATA-STOR-003
-STATUS: Planned
+STATUS: Implemented
 TITLE: Optional Hardware PL Compression Pipeline Stage
 STATEMENT: >>>
 The Data Product writer shall support routing a 32-byte FrameDesc through a hardware programmable logic compression slot (such as CCSDS-123.0-B-2, LZ4, or Zstd) before non-volatile storage DMA commit without touching payload bytes on the CPU.
@@ -194,14 +194,14 @@ RATIONALE: >>>
 Offloading high-rate science compression to FPGA fabric maximizes solid-state recorder capacity and downlink yield without saturating flight CPU cores.
 <<<
 VERIFICATION_METHOD: Demonstration
-ARTIFACT: services/storage/include/strata/services/storage/
+ARTIFACT: services/storage/include/strata/services/storage/pl_compression_stage.hpp
 RELATIONS:
 - TYPE: Parent
   VALUE: STRATA-SYS-006
 
 [REQUIREMENT]
 UID: STRATA-STOR-004
-STATUS: Partially Implemented
+STATUS: Implemented
 TITLE: 64-Bit Partition-Jailed File Service and DFX Staging Authentication
 STATEMENT: >>>
 The FileService shall enforce per-partition logical volume ownership and 64-bit byte quotas, support onboard file management operations (commit, move, delete, directory listing, CRC-32C verification), and require explicit authentication on staged DFX/PDI images before SlotManager marks them loadable.
@@ -217,7 +217,7 @@ RELATIONS:
 
 [REQUIREMENT]
 UID: STRATA-STOR-005
-STATUS: Partially Implemented
+STATUS: Implemented
 TITLE: 64-Bit CCSDS CFDP Class 1 and Class 2 Transfer Engine
 STATEMENT: >>>
 The storage service shall implement CCSDS 727.0-B-5 CFDP Class 1 (unacknowledged) and Class 2 (acknowledged) uplink and downlink transactions with 64-bit file offsets, out-of-order byte-extent coalescing, missing-gap NAK generation, selective retransmission, and suspend/resume checkpointing.
@@ -233,7 +233,7 @@ RELATIONS:
 
 [REQUIREMENT]
 UID: STRATA-STOR-006
-STATUS: Planned
+STATUS: Implemented
 TITLE: Lightweight Fast File Chunk Uplink and Downlink Protocol
 STATEMENT: >>>
 In addition to full CCSDS CFDP, the storage service shall provide a minimal chunked file uplink/downlink service with inter-file link cooldown throttling for rapid benchtop FlatSat testing and high-SNR links.
@@ -242,7 +242,7 @@ RATIONALE: >>>
 A lightweight fast file protocol simplifies integration testing while cooldown delays prevent continuous file transfers from saturating command links.
 <<<
 VERIFICATION_METHOD: Test
-ARTIFACT: services/storage/include/strata/services/storage/
+ARTIFACT: services/storage/include/strata/services/storage/file_and_cfdp.hpp
 RELATIONS:
 - TYPE: Parent
   VALUE: STRATA-SYS-008
@@ -270,7 +270,7 @@ RELATIONS:
 
 [REQUIREMENT]
 UID: STRATA-AUTO-002
-STATUS: Planned
+STATUS: Implemented
 TITLE: Cryptographically Signed Ahead-of-Time Autonomy Module Loader
 STATEMENT: >>>
 The autonomy subsystem shall support loading cryptographically verified ahead-of-time compiled WebAssembly or bounded bytecode modules from a jailed storage volume into the isolated AutonomySandbox partition without requiring a dynamic JIT compiler or heap allocator.
@@ -279,7 +279,7 @@ RATIONALE: >>>
 Signed AOT modules deliver near-native onboard autonomy performance while preserving zero-heap determinism and uplink security.
 <<<
 VERIFICATION_METHOD: Demonstration
-ARTIFACT: services/autonomy_sandbox/include/strata/services/autonomy/
+ARTIFACT: services/autonomy_sandbox/include/strata/services/autonomy/aot_loader.hpp
 RELATIONS:
 - TYPE: Parent
   VALUE: STRATA-SYS-001

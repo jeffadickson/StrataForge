@@ -52,7 +52,7 @@ RELATIONS:
 
 [REQUIREMENT]
 UID: STRATA-HYP-002
-STATUS: Planned
+STATUS: Implemented
 TITLE: Deterministic Minor and Major Frame Time Partitioning
 STATEMENT: >>>
 The hypervisor shall schedule partitions according to a static build-time minor/major cyclic frame table, preempting any partition immediately upon exhaustion of its minor-frame execution budget without jitter leakage into higher-criticality partitions.
@@ -61,14 +61,14 @@ RATIONALE: >>>
 Strict temporal partitioning guarantees deterministic real-time deadlines for flight-critical C&DH, comms, and FDIR partitions regardless of payload workload.
 <<<
 VERIFICATION_METHOD: Test
-ARTIFACT: hypervisor/core/
+ARTIFACT: hypervisor/include/strata/hyp/hypervisor.hpp
 RELATIONS:
 - TYPE: Parent
   VALUE: STRATA-SYS-003
 
 [REQUIREMENT]
 UID: STRATA-HYP-003
-STATUS: Planned
+STATUS: Implemented
 TITLE: Hardware Spatial Memory and Peripheral Isolation
 STATEMENT: >>>
 The hypervisor shall enforce static, non-overlapping memory and MMIO mappings per partition via hardware Stage-2 MMU (AArch64 EL2), MPU (Cortex-R5F / MicroBlaze), and external memory/bus protection units (XMPU/SMMU), granting Read-Only mappings to shared consumer regions.
@@ -77,14 +77,14 @@ RATIONALE: >>>
 Hardware memory enforcement guarantees that a wild pointer or corrupted DMA descriptor in a lower-criticality partition cannot alter another partition's memory or registers.
 <<<
 VERIFICATION_METHOD: Test
-ARTIFACT: hypervisor/arch/aarch64/
+ARTIFACT: hypervisor/include/strata/hyp/hypervisor.hpp
 RELATIONS:
 - TYPE: Parent
   VALUE: STRATA-SYS-003
 
 [REQUIREMENT]
 UID: STRATA-HYP-004
-STATUS: Planned
+STATUS: Implemented
 TITLE: Hypervisor-Enforced Doorbell Token-Bucket Rate Limiting
 STATEMENT: >>>
 The hypervisor shall enforce a per-channel static authorization check and token-bucket rate budget on every Notify hypercall, throttling excessive inter-partition doorbells before delivering hardware IPIs.
@@ -93,7 +93,7 @@ RATIONALE: >>>
 A runaway guest looping on doorbell notifications could otherwise cause an interrupt storm that starves a Class B receiving partition.
 <<<
 VERIFICATION_METHOD: Test
-ARTIFACT: hypervisor/core/
+ARTIFACT: hypervisor/include/strata/hyp/hypervisor.hpp
 RELATIONS:
 - TYPE: Parent
   VALUE: STRATA-SYS-003
@@ -116,7 +116,7 @@ RELATIONS:
 
 [REQUIREMENT]
 UID: STRATA-HYP-006
-STATUS: Planned
+STATUS: Implemented
 TITLE: Warm Restart CriticalStore Preservation and Cold Restart Scrub
 STATEMENT: >>>
 On a privileged PartCtl(WarmRestart) invocation, the hypervisor shall halt the target partition, zero its stack and .bss memory, preserve its dedicated CriticalStore checkpoint region, increment its GenId, and re-enter the partition in WarmStart mode; on ColdRestart it shall additionally clear the CriticalStore region.
@@ -125,7 +125,7 @@ RATIONALE: >>>
 Distinguishing warm and cold partition restarts enables sub-2 ms autonomous state recovery after transient upsets while providing a clean cold-boot reset path.
 <<<
 VERIFICATION_METHOD: Test
-ARTIFACT: hypervisor/core/
+ARTIFACT: hypervisor/include/strata/hyp/hypervisor.hpp
 RELATIONS:
 - TYPE: Parent
   VALUE: STRATA-SYS-007
@@ -148,7 +148,7 @@ RELATIONS:
 
 [REQUIREMENT]
 UID: STRATA-HYP-008
-STATUS: Planned
+STATUS: Implemented
 TITLE: Privileged Trap Capture and Out-of-Kernel Supervisor Policy
 STATEMENT: >>>
 The hypervisor shall trap hardware exceptions (data/instruction abort, alignment fault, undefined instruction, privilege violation) and FaultReport calls, halt the offending partition, capture diagnostic register state (PC, LR, fault syndrome, fault address, GenId), and notify the unprivileged FDIR supervisor partition rather than hardcoding recovery policy in kernel mode.
@@ -157,14 +157,14 @@ RATIONALE: >>>
 Separating fault containment (hypervisor) from mission recovery policy (FDIR supervisor) keeps the privileged kernel tiny, deterministic, and mission-independent.
 <<<
 VERIFICATION_METHOD: Test
-ARTIFACT: hypervisor/core/
+ARTIFACT: hypervisor/include/strata/hyp/hypervisor.hpp
 RELATIONS:
 - TYPE: Parent
   VALUE: STRATA-SYS-003
 
 [REQUIREMENT]
 UID: STRATA-HYP-009
-STATUS: Planned
+STATUS: Implemented
 TITLE: Multi-Architecture Hypervisor Backends
 STATEMENT: >>>
 The hypervisor shall implement clean architecture backends under the shared 8-hypcall ABI for Versal Cortex-A72 (EL2), Versal Lockstep Cortex-R5F (MPU + PMC PLM/XilSEM bridge), Kintex TMR MicroBlaze (external rad-hard supervisor bridge), and a deterministic host SIL simulation backend.
@@ -173,7 +173,7 @@ RATIONALE: >>>
 Isolating architecture-specific trap, MMU, and IPI code behind a unified core allows seamless portability across Versal, Kintex, and desktop SIL environments.
 <<<
 VERIFICATION_METHOD: Demonstration
-ARTIFACT: hypervisor/arch/
+ARTIFACT: hypervisor/arch/host_sil/host_sil_backend.hpp
 RELATIONS:
 - TYPE: Parent
   VALUE: STRATA-SYS-002

@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<PackageFile xmlns="http://www.ccsds.org/schema/sois/seds">
+  <Package name="HyperspecImagerSensor">
+    <DataTypeSet>
+      <IntegerDataType name="IntegrationUsType">
+        <IntegerDataEncoding sizeInBits="32" encoding="unsigned" byteOrder="littleEndian"/>
+        <Range>
+          <MinMaxRange rangeType="inclusiveMinInclusiveMax" min="100" max="500000"/>
+        </Range>
+      </IntegerDataType>
+      <IntegerDataType name="DetectorTempRawType">
+        <IntegerDataEncoding sizeInBits="16" encoding="unsigned" byteOrder="littleEndian"/>
+      </IntegerDataType>
+    </DataTypeSet>
+    <DeclaredInterfaceSet>
+      <Interface name="HyperspecRegisterMap">
+        <ParameterSet>
+          <Parameter name="INTEGRATION_US" type="IntegrationUsType" mode="sync" readOnly="false" offset="0x1000" unit="us"/>
+          <Parameter name="DETECTOR_TEMP_RAW" type="DetectorTempRawType" mode="sync" readOnly="true" offset="0x1004" unit="K" cal_c0="180.0" cal_c1="0.05"/>
+        </ParameterSet>
+      </Interface>
+    </DeclaredInterfaceSet>
+  </Package>
+</PackageFile>

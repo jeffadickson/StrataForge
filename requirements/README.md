@@ -18,8 +18,9 @@ All system, hypervisor, middleware, flight service, RTL, codegen, and verificati
 
 - **Built-in CI / CTest Graph & Syntax Check** (zero external dependencies):
   ```bash
-  python3 tools/check_sdoc.py requirements/
+  python3 tools/check_sdoc.py requirements/ .
   ```
+  Current status: **84/84 requirements Implemented** (`0` orphans, `0` cycles), backed by 17 CTest verification suites covering unit tests, hypervisor SIL, deterministic rule fuzzing, multi-domain `strata-gen` codegen (C++20 / SV / TCL / XTCE / JSON / SEDS), and live Verilator Versal & Kintex RTL co-simulation.
 - **StrictDoc HTML / ReqIF / PDF Export** (when `strictdoc` is installed):
   ```bash
   strictdoc export --formats=html,reqif-sdoc --output-dir=build/strictdoc requirements/

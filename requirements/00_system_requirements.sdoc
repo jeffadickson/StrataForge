@@ -127,7 +127,7 @@ ARTIFACT: services/fdir_slot_mgr/include/strata/services/fdir/fdir_engine.hpp
 
 [REQUIREMENT]
 UID: STRATA-SYS-008
-STATUS: Partially Implemented
+STATUS: Implemented
 TITLE: Native Host SIL, Seeded Fuzzing, and RTL Co-Simulation
 STATEMENT: >>>
 The StrataForge codebase shall compile identically for bare-metal flight targets, host Software-in-the-Loop (SIL) deterministic simulation, seeded stateful rule-based fuzzing, and Verilator RTL hardware-in-the-loop co-simulation without modifying instrument application source code.
@@ -136,6 +136,6 @@ RATIONALE: >>>
 Concept-swappable hardware and hypervisor backends allow exhaustive CI verification and fault injection long before flight silicon is available.
 <<<
 VERIFICATION_METHOD: Test
-ARTIFACT: tests/rule_fuzzer/test_rule_fuzzer.cpp
+ARTIFACT: tests/verilator_hil/test_verilator_scsr_dma.cpp
 
 [[/SECTION]]

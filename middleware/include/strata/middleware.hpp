@@ -23,3 +23,4 @@
 #include <strata/hw/slot_handle.hpp>
 
 #include <strata/runtime/partition_runtime.hpp>
+#include <strata/runtime/subtopology.hpp>
