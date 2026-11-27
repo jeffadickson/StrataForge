@@ -111,11 +111,35 @@ if(verilator_FOUND)
     )
     target_link_libraries(test_verilator_scsr_dma PRIVATE strata_verilated_rtl)
     add_test(NAME strata.hil.verilator_scsr_dma COMMAND test_verilator_scsr_dma)
+
+    add_executable(test_verilator_mission_loop verilator_hil/test_verilator_mission_loop.cpp)
+    target_include_directories(test_verilator_mission_loop PRIVATE
+        ${CMAKE_SOURCE_DIR}/middleware/include
+        ${CMAKE_SOURCE_DIR}/hypervisor/include
+        ${CMAKE_SOURCE_DIR}/services/fdir_slot_mgr/include
+    )
+    target_link_libraries(test_verilator_mission_loop PRIVATE strata_verilated_rtl)
+    add_test(NAME strata.hil.verilator_mission_loop COMMAND test_verilator_mission_loop)
+endif()
+
+# Ground Operations CLI & Bare-Metal Cross-Compilation Proofs
+if(Python3_Interpreter_FOUND)
+    add_test(
+        NAME strata.ops.ground_cli_roundtrip
+        COMMAND ${Python3_EXECUTABLE}
+                ${CMAKE_SOURCE_DIR}/tools/strata-ops/test_strata_ops.py
+    )
+    add_test(
+        NAME strata.cross.baremetal_aarch64_and_r5
+        COMMAND ${Python3_EXECUTABLE}
+                ${CMAKE_SOURCE_DIR}/tools/check_baremetal_cross.py
+    )
 endif()
 
 # End-to-End Multi-Partition Mission Flight Integration & Static Safety Audit
-if(TARGET versal_mission_flight_sim)
+if(TARGET versal_mission_flight_sim AND TARGET kintex_mission_flight_sim)
     add_test(NAME strata.integration.versal_mission_flight_sim COMMAND versal_mission_flight_sim)
+    add_test(NAME strata.integration.kintex_mission_flight_sim COMMAND kintex_mission_flight_sim)
     if(Python3_Interpreter_FOUND)
         add_test(
             NAME strata.audit.flight_safety_stack_and_heap
@@ -126,6 +150,7 @@ if(TARGET versal_mission_flight_sim)
                     --skip-elf-on-asan
                     --elf $<TARGET_FILE:dual_instrument_sil>
                     --elf $<TARGET_FILE:versal_mission_flight_sim>
+                    --elf $<TARGET_FILE:kintex_mission_flight_sim>
         )
     endif()
 endif()

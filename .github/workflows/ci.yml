@@ -32,6 +32,20 @@ jobs:
       - name: Run CTest (${{ matrix.preset }})
         run: ctest --preset ${{ matrix.preset }} --output-on-failure
 
+  baremetal-cross-compile:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install AArch64 and ARM Cortex-R5 bare-metal cross compilers
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq g++-aarch64-linux-gnu gcc-arm-none-eabi libnewlib-arm-none-eabi python3
+
+      - name: Verify Versal Cortex-A72 EL2 ELF and Lockstep Cortex-R5F bare-metal builds
+        run: python3 tools/check_baremetal_cross.py
+
   rtl-lint-and-traceability:
     runs-on: ubuntu-24.04
     steps:

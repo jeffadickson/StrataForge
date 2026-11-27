@@ -21,13 +21,14 @@ StrataForge/
 └── tests/                   # C++20 unit tests, deterministic rule fuzzer, Verilator HIL
 ```
 
-## Quickstart (Host SIL, Verilator Co-Sim & Flight Safety Audits)
+## Quickstart (Host SIL, Verilator HIL, Cross-Compile & Flight Safety Audits)
 
 ```bash
 cmake --preset host-debug        # Also available: host-sanitizers, host-release, host-clang
 cmake --build --preset host-debug
-ctest --preset host-debug        # 19 suites: unit, hypervisor, fuzzer, codegen, StrictDoc, Verilator HIL, mission sim & stack/zero-heap audit
+ctest --preset host-debug        # 23 suites: unit, hypervisor, fuzzer, codegen, StrictDoc, Verilator HIL, ops CLI, bare-metal cross, Versal/Kintex sims & stack/zero-heap audit
 ./build/host-debug/examples/versal_mission_flight_sim
+./build/host-debug/examples/kintex_mission_flight_sim
 ```
 
 ## Core Middleware Primitives
@@ -39,8 +40,10 @@ ctest --preset host-debug        # 19 suites: unit, hypervisor, fuzzer, codegen,
 5. **`CriticalStore<T>`** — Ping-pong CRC-32C persistent RAM checkpoint store surviving warm resets, SEU restarts, and spare-slot failover
 6. **`SlotHandle<Spec>` & `RegMap`** — Compile-time-safe MMIO (`RO`/`WO`/`RW`/`RW1C`) and unified spatial / DFX / AIE hardware slot lifecycle (`SCSR`)
 
-## Formal Requirements & Flight Safety Gates
+## Formal Requirements, Ground Ops & Flight Safety Gates
 
 - **StrictDoc Specifications** ([`requirements/`](requirements/README.md)): **84 / 84 requirements Implemented** (`0` orphans, `0` cycles), validated automatically by `tools/check_sdoc.py`.
+- **Bare-Metal Cross-Compilation Proof** ([`tools/check_baremetal_cross.py`](tools/check_baremetal_cross.py)): Assembles and links a freestanding W^X Versal Cortex-A72 EL2 ELF (`vbar_el2`, `vttbr_el2`, `eret`, `cntpct_el0`, `.critical_store`, zero libc/PLT) and compiles freestanding ARMv7-R Lockstep Cortex-R5F FDIR firmware.
+- **Ground Mission Ops CLI** ([`tools/strata-ops/strata_ops.py`](tools/strata-ops/strata_ops.py)): Consumes `strata-gen`'s `mission_dict.json` for CCSDS TC frame encoding (CRC-16 FECF), polynomial engineering-unit calibration, and binary `EventRecord` decoding.
 - **Static Stack-Usage & Zero-Heap Audit** ([`tools/check_flight_safety.py`](tools/check_flight_safety.py)): Enforces bounded per-function stack frames (`<= 4096 B`, zero unbounded dynamic stack) from GCC `.su` reports and verifies zero `malloc`/`free`/`operator new`/`__cxa_throw` references in compiled flight binaries.
-- **Continuous Integration** ([`.github/workflows/ci.yml`](.github/workflows/ci.yml)): Verifies GCC Debug, ASan+UBSan, Release, Clang++ C++20, Verilator `-Wall` RTL lint + Versal/Kintex co-simulation, and requirements traceability on every push.
+- **Continuous Integration** ([`.github/workflows/ci.yml`](.github/workflows/ci.yml)): Verifies GCC Debug, ASan+UBSan, Release, Clang++ C++20, bare-metal AArch64 EL2 & Cortex-R5F cross builds, Verilator `-Wall` RTL lint + closed-loop Versal/Kintex HIL co-simulation, and StrictDoc traceability on every push.
