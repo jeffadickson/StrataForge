@@ -127,3 +127,7 @@ type = "uint16"
 unit = "K"
 cal_c0 = 180.0
 cal_c1 = 0.05
+limit_lo_err = 200.0
+limit_lo_warn = 220.0
+limit_hi_warn = 295.0
+limit_hi_err = 310.0

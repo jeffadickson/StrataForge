@@ -134,6 +134,11 @@ if(Python3_Interpreter_FOUND)
                 ${CMAKE_SOURCE_DIR}/tools/strata-ops/test_strata_ops.py
     )
     add_test(
+        NAME strata.ground.gds_end_to_end
+        COMMAND ${Python3_EXECUTABLE}
+                ${CMAKE_SOURCE_DIR}/ground/tests/test_strata_ground.py
+    )
+    add_test(
         NAME strata.cross.baremetal_aarch64_and_r5
         COMMAND ${Python3_EXECUTABLE}
                 ${CMAKE_SOURCE_DIR}/tools/check_baremetal_cross.py

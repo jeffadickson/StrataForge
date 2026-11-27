@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>StrataGround — Mission Control Console</title>
+<style>
+  :root {
+    --bg: #0b101b; --panel: #131b2c; --border: #23304a;
+    --text: #e4ebf7; --muted: #8ea0bf; --accent: #38bdf8;
+    --green: #22c55e; --yellow: #facc15; --red: #ef4444;
+  }
+  * { box-sizing: border-box; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+  body { margin: 0; background: var(--bg); color: var(--text); padding: 16px; }
+  header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border); padding-bottom: 12px; margin-bottom: 16px; }
+  h1 { margin: 0; font-size: 18px; color: var(--accent); letter-spacing: 0.05em; }
+  .badge { padding: 4px 10px; border-radius: 4px; font-size: 12px; font-weight: 700; }
+  .NOMINAL { background: rgba(34,197,94,.2); color: var(--green); }
+  .WARN_LO, .WARN_HI { background: rgba(250,204,21,.2); color: var(--yellow); }
+  .ERROR_LO, .ERROR_HI { background: rgba(239,68,68,.25); color: var(--red); }
+  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(380px, 1fr)); gap: 14px; }
+  section { background: var(--panel); border: 1px solid var(--border); border-radius: 8px; padding: 14px; }
+  h2 { margin: 0 0 10px 0; font-size: 13px; text-transform: uppercase; color: var(--muted); }
+  table { width: 100%; border-collapse: collapse; font-size: 12px; }
+  th, td { text-align: left; padding: 6px; border-bottom: 1px solid var(--border); }
+  input, select, textarea, button {
+    background: #0d1422; color: var(--text); border: 1px solid var(--border);
+    border-radius: 4px; padding: 6px 8px; font-size: 12px;
+  }
+  button { background: var(--accent); color: #05101d; font-weight: 700; cursor: pointer; border: none; }
+  .row { display: flex; gap: 8px; margin-bottom: 8px; flex-wrap: wrap; }
+  pre { background: #090e18; padding: 8px; border-radius: 4px; overflow-x: auto; font-size: 11px; max-height: 180px; }
+</style>
+</head>
+<body>
+<header>
+  <h1>STRATAGROUND // MISSION CONTROL</h1>
+  <div id="missionMeta" style="font-size:12px;color:var(--muted)">Loading dictionary...</div>
+</header>
+
+<div class="grid">
+  <section>
+    <h2>Live Calibrated Telemetry &amp; Limits</h2>
+    <table>
+      <thead><tr><th>Channel</th><th>Raw</th><th>Eng</th><th>Status</th></tr></thead>
+      <tbody id="tlmBody"></tbody>
+    </table>
+  </section>
+
+  <section>
+    <h2>Command Uplink (CCSDS TC &amp; PUS-C)</h2>
+    <div class="row">
+      <select id="cmdSelect"></select>
+      <input id="cmdArg" placeholder="arg hex (e.g. 00001194)" style="flex:1">
+      <button onclick="sendCmd()">Send TC</button>
+    </div>
+    <div class="row">
+      <input id="pusSvc" type="number" value="17" style="width:70px" title="PUS Service">
+      <input id="pusSub" type="number" value="1" style="width:70px" title="PUS Subtype">
+      <input id="pusApp" placeholder="app hex" style="flex:1">
+      <button onclick="sendPus()">Send PUS-C</button>
+    </div>
+    <pre id="cmdHist"></pre>
+  </section>
+
+  <section>
+    <h2>Flight Sequence Compiler (.seq &rarr; CRC-32C)</h2>
+    <textarea id="seqText" rows="4" style="width:100%">0.000 NOOP
++1.500 HSI_SET_INTEGRATION 4500</textarea>
+    <div class="row" style="margin-top:8px"><button onclick="compileSeq()">Compile Sequence</button></div>
+    <pre id="seqOut"></pre>
+  </section>
+
+  <section>
+    <h2>Live Events (EVR) &amp; PUS-C TM</h2>
+    <pre id="evrOut"></pre>
+  </section>
+</div>
+
+<script>
+async function loadDict() {
+  const d = await (await fetch('/api/dictionary')).json();
+  document.getElementById('missionMeta').textContent =
+    `${d.mission.name} (${d.mission.target_silicon}) | HASH=${d.manifest_hash} | Parts=${d.partitions.length}`;
+  const sel = document.getElementById('cmdSelect');
+  sel.innerHTML = '';
+  for (const c of d.commands || []) {
+    const o = document.createElement('option');
+    o.value = c.name;
+    o.textContent = `${c.name} (0x${c.opcode.toString(16).toUpperCase()}, ${c.payload_bytes}B)`;
+    sel.appendChild(o);
+  }
+}
+async function poll() {
+  const t = await (await fetch('/api/telemetry')).json();
+  document.getElementById('tlmBody').innerHTML = t.telemetry.map(r =>
+    `<tr><td>${r.channel}</td><td>${r.raw_value}</td><td>${Number(r.eng_value).toFixed(2)} ${r.unit}</td>` +
+    `<td><span class="badge ${r.limit_state}">${r.limit_state}</span></td></tr>`).join('');
+  const h = await (await fetch('/api/history')).json();
+  document.getElementById('cmdHist').textContent = JSON.stringify(h.commands, null, 2);
+  const e = await (await fetch('/api/events')).json();
+  document.getElementById('evrOut').textContent = JSON.stringify(e, null, 2);
+}
+async function sendCmd() {
+  await fetch('/api/command', {method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({command: document.getElementById('cmdSelect').value, arg_hex: document.getElementById('cmdArg').value})});
+  poll();
+}
+async function sendPus() {
+  await fetch('/api/command', {method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({mode:'pus', service_type: +document.getElementById('pusSvc').value,
+      service_subtype: +document.getElementById('pusSub').value, app_hex: document.getElementById('pusApp').value})});
+  poll();
+}
+async function compileSeq() {
+  const r = await (await fetch('/api/sequence/compile', {method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({text: document.getElementById('seqText').value})})).json();
+  document.getElementById('seqOut').textContent = JSON.stringify(r, null, 2);
+}
+loadDict().then(poll);
+setInterval(poll, 1000);
+</script>
+</body>
+</html>

@@ -13,6 +13,7 @@ All system, hypervisor, middleware, flight service, RTL, codegen, and verificati
 | `04_services_cdh_requirements.sdoc` | `STRATA-CDH-` | 4-stage `CmdService`, `TlmPacketizer`, online stats, forwarding, `SeqEngine`, memory ops, time |
 | `05_services_fdir_storage_autonomy.sdoc` | `STRATA-FDIR-` / `STOR-` / `AUTO-` | Unified `FdirEngine`, `SlotManager`, 64-bit Data Products & File/CFDP, isolated `AutonomySandbox` |
 | `06_rtl_tooling_verification.sdoc` | `STRATA-RTL-` / `GEN-` / `VER-` | 4 KB SCSR RTL, Versal/Kintex shells, `strata-gen` codegen, static checks, fuzzing & traceability |
+| `07_ground_control_requirements.sdoc` | `STRATA-GDS-` | StrataGround GDS & I&T platform (dictionary, limits, sequence/table compilers, PCAP broker, test API, web console) |
 
 ## Validation & Export
 
@@ -20,7 +21,7 @@ All system, hypervisor, middleware, flight service, RTL, codegen, and verificati
   ```bash
   python3 tools/check_sdoc.py requirements/ .
   ```
-  Current status: **86/86 requirements Implemented** (`0` orphans, `0` cycles), backed by 24 CTest verification suites covering unit tests, hypervisor SIL, ECSS-E-ST-70-41C (PUS-C), refresh-free TMR+SECDED `NvFaultLog`, deterministic rule fuzzing, multi-domain `strata-gen` codegen, bare-metal AArch64 EL2 / Cortex-R5F cross proofs, and live Verilator Versal & Kintex RTL co-simulation.
+  Current status: **91/91 requirements Implemented** (`0` orphans, `0` cycles), backed by 25 CTest verification suites covering unit tests, hypervisor SIL, ECSS-E-ST-70-41C (PUS-C), refresh-free TMR+SECDED `NvFaultLog`, StrataGround GDS/I&T, deterministic rule fuzzing, multi-domain `strata-gen` codegen, bare-metal AArch64 EL2 / Cortex-R5F cross proofs, and live Verilator Versal & Kintex RTL co-simulation.
 - **StrictDoc HTML / ReqIF / PDF Export** (when `strictdoc` is installed):
   ```bash
   strictdoc export --formats=html,reqif-sdoc --output-dir=build/strictdoc requirements/
