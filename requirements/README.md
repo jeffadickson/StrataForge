@@ -18,11 +18,12 @@ All system, hypervisor, middleware, flight service, RTL, codegen, and verificati
 
 ## Validation & Export
 
-- **Built-in CI / CTest Graph & Syntax Check** (zero external dependencies):
+- **Built-in CI / CTest Graph & Syntax Check** (.NET 11 parallel verifier, zero external packages):
   ```bash
-  python3 tools/check_sdoc.py requirements/ .
+  dotnet build dotnet/StrataForge.slnx -c Release
+  dotnet/StrataForge.Cli/bin/Release/net11.0/strata-tools check-sdoc requirements/ .
   ```
-  Current status: **100/100 requirements Implemented** (`0` orphans, `0` cycles), backed by 29 CTest verification suites covering unit tests, hypervisor SIL, FIPS/NIST/RFC-8032 crypto (`SHA-256`/`HMAC-SHA256`/`AES-256-GCM`/`Ed25519`), mock instrument framework, ECSS-E-ST-70-41C (PUS-C), refresh-free TMR+SECDED `NvFaultLog`, StrataGround GDS/I&T + live UDP flight-ground loop, deterministic rule fuzzing, multi-domain `strata-gen` codegen, bare-metal AArch64 EL2 / Cortex-R5F cross proofs, live QEMU Cortex-A72 EL2 execution, and live Verilator Versal & Kintex RTL co-simulation.
+  Current status: **100/100 requirements Implemented** (`0` orphans, `0` cycles), backed by 29 CTest verification suites covering unit tests, hypervisor SIL, FIPS/NIST/RFC-8032 crypto (`SHA-256`/`HMAC-SHA256`/`AES-256-GCM`/`Ed25519`), mock instrument framework, ECSS-E-ST-70-41C (PUS-C), refresh-free TMR+SECDED `NvFaultLog`, .NET 11 multithreaded StrataGround GDS/I&T + live UDP flight-ground loop, deterministic rule fuzzing, parallel multi-domain `strata-tools gen` codegen (`XDocument` SEDS/XTCE), concurrent bare-metal AArch64 EL2 / Cortex-R5F cross proofs, live QEMU Cortex-A72 EL2 execution, and live Verilator Versal & Kintex RTL co-simulation.
 - **StrictDoc HTML / ReqIF / PDF Export** (when `strictdoc` is installed):
   ```bash
   strictdoc export --formats=html,reqif-sdoc --output-dir=build/strictdoc requirements/

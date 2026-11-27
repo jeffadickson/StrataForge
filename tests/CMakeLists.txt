@@ -62,30 +62,25 @@ add_executable(test_rule_fuzzer rule_fuzzer/test_rule_fuzzer.cpp)
 target_link_libraries(test_rule_fuzzer PRIVATE strata::services)
 add_test(NAME strata.fuzzer.rule_engine COMMAND test_rule_fuzzer)
 
-# Single-Source-of-Truth Manifest Static Verification, Multi-Domain Codegen & StrictDoc Graph
-find_package(Python3 COMPONENTS Interpreter)
-if(Python3_Interpreter_FOUND)
+# Single-Source-of-Truth Manifest Static Verification, Multi-Domain Codegen & StrictDoc Graph (.NET 11)
+if(DOTNET_EXECUTABLE)
     add_test(
         NAME strata.manifest.versal_dual_instrument
-        COMMAND ${Python3_EXECUTABLE}
-                ${CMAKE_SOURCE_DIR}/tools/strata-gen/strata_gen.py
+        COMMAND ${STRATA_TOOLS_CMD} gen
                 ${CMAKE_SOURCE_DIR}/manifests/examples/versal_dual_instrument.toml
     )
     add_test(
         NAME strata.manifest.kintex_dual_instrument
-        COMMAND ${Python3_EXECUTABLE}
-                ${CMAKE_SOURCE_DIR}/tools/strata-gen/strata_gen.py
+        COMMAND ${STRATA_TOOLS_CMD} gen
                 ${CMAKE_SOURCE_DIR}/manifests/examples/kintex_dual_instrument.toml
     )
     add_test(
         NAME strata.codegen.multi_domain_and_xtce
-        COMMAND ${Python3_EXECUTABLE}
-                ${CMAKE_SOURCE_DIR}/tools/strata-gen/test_strata_gen.py
+        COMMAND ${STRATA_TOOLS_CMD} test gen ${CMAKE_SOURCE_DIR}
     )
     add_test(
         NAME strata.requirements.strictdoc_graph
-        COMMAND ${Python3_EXECUTABLE}
-                ${CMAKE_SOURCE_DIR}/tools/check_sdoc.py
+        COMMAND ${STRATA_TOOLS_CMD} check-sdoc
                 ${CMAKE_SOURCE_DIR}/requirements
                 ${CMAKE_SOURCE_DIR}
     )
@@ -134,27 +129,23 @@ if(verilator_FOUND)
     add_test(NAME strata.hil.verilator_mission_loop COMMAND test_verilator_mission_loop)
 endif()
 
-# Ground Operations CLI & Bare-Metal Cross-Compilation Proofs
-if(Python3_Interpreter_FOUND)
+# Ground Operations CLI, StrataGround GDS/I&T, Bare-Metal Cross Proofs & Live QEMU EL2 (.NET 11)
+if(DOTNET_EXECUTABLE)
     add_test(
         NAME strata.ops.ground_cli_roundtrip
-        COMMAND ${Python3_EXECUTABLE}
-                ${CMAKE_SOURCE_DIR}/tools/strata-ops/test_strata_ops.py
+        COMMAND ${STRATA_TOOLS_CMD} test ops ${CMAKE_SOURCE_DIR}
     )
     add_test(
         NAME strata.ground.gds_end_to_end
-        COMMAND ${Python3_EXECUTABLE}
-                ${CMAKE_SOURCE_DIR}/ground/tests/test_strata_ground.py
+        COMMAND ${STRATA_TOOLS_CMD} test ground ${CMAKE_SOURCE_DIR}
     )
     add_test(
         NAME strata.cross.baremetal_aarch64_and_r5
-        COMMAND ${Python3_EXECUTABLE}
-                ${CMAKE_SOURCE_DIR}/tools/check_baremetal_cross.py
+        COMMAND ${STRATA_TOOLS_CMD} check-cross ${CMAKE_SOURCE_DIR}
     )
     add_test(
         NAME strata.qemu.aarch64_el2_execution
-        COMMAND ${Python3_EXECUTABLE}
-                ${CMAKE_SOURCE_DIR}/tools/check_qemu_aarch64_el2.py
+        COMMAND ${STRATA_TOOLS_CMD} check-qemu-el2 ${CMAKE_SOURCE_DIR}
     )
 endif()
 
@@ -162,17 +153,16 @@ endif()
 if(TARGET versal_mission_flight_sim AND TARGET kintex_mission_flight_sim AND TARGET live_ground_sil)
     add_test(NAME strata.integration.versal_mission_flight_sim COMMAND versal_mission_flight_sim)
     add_test(NAME strata.integration.kintex_mission_flight_sim COMMAND kintex_mission_flight_sim)
-    if(Python3_Interpreter_FOUND)
+    if(DOTNET_EXECUTABLE)
         add_test(
             NAME strata.ground.live_udp_flight_loop
-            COMMAND ${Python3_EXECUTABLE}
-                    ${CMAKE_SOURCE_DIR}/ground/tests/test_live_flight_ground_loop.py
+            COMMAND ${STRATA_TOOLS_CMD} test live-udp
+                    ${CMAKE_SOURCE_DIR}
                     $<TARGET_FILE:live_ground_sil>
         )
         add_test(
             NAME strata.audit.flight_safety_stack_and_heap
-            COMMAND ${Python3_EXECUTABLE}
-                    ${CMAKE_SOURCE_DIR}/tools/check_flight_safety.py
+            COMMAND ${STRATA_TOOLS_CMD} check-safety
                     ${CMAKE_BINARY_DIR}
                     --max-flight-stack-bytes 4096
                     --skip-elf-on-asan

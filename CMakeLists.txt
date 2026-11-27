@@ -24,6 +24,39 @@ add_subdirectory(middleware)
 add_subdirectory(services)
 add_subdirectory(instruments)
 
+# Discover .NET 11 SDK and build unified multithreaded C# utilities (`strata-tools` + XML docs)
+find_program(DOTNET_EXECUTABLE dotnet
+    HINTS "$ENV{HOME}/.dotnet" "$ENV{DOTNET_ROOT}"
+    NO_DEFAULT_PATH
+)
+if(NOT DOTNET_EXECUTABLE)
+    find_program(DOTNET_EXECUTABLE dotnet)
+endif()
+
+if(DOTNET_EXECUTABLE)
+    get_filename_component(STRATA_DOTNET_ROOT "${DOTNET_EXECUTABLE}" DIRECTORY)
+    set(STRATA_TOOLS_OUT_DIR "${CMAKE_BINARY_DIR}/dotnet_tools")
+    set(STRATA_TOOLS_BIN "${STRATA_TOOLS_OUT_DIR}/strata-tools")
+    set(STRATA_TOOLS_CMD ${CMAKE_COMMAND} -E env "DOTNET_ROOT=${STRATA_DOTNET_ROOT}" "${STRATA_TOOLS_BIN}")
+
+    file(GLOB_RECURSE STRATA_DOTNET_SOURCES CONFIGURE_DEPENDS
+        "${CMAKE_SOURCE_DIR}/dotnet/*.cs"
+        "${CMAKE_SOURCE_DIR}/dotnet/*.csproj"
+        "${CMAKE_SOURCE_DIR}/dotnet/Directory.Build.props"
+    )
+
+    add_custom_command(
+        OUTPUT "${STRATA_TOOLS_BIN}"
+        COMMAND ${CMAKE_COMMAND} -E env "DOTNET_ROOT=${STRATA_DOTNET_ROOT}"
+                "${DOTNET_EXECUTABLE}" build
+                "${CMAKE_SOURCE_DIR}/dotnet/StrataForge.Cli/StrataForge.Cli.csproj"
+                -c Release -o "${STRATA_TOOLS_OUT_DIR}" --nologo
+        DEPENDS ${STRATA_DOTNET_SOURCES}
+        COMMENT "Building .NET 11 multithreaded C# utilities (strata-tools + XML docs)"
+    )
+    add_custom_target(strata_dotnet_tools ALL DEPENDS "${STRATA_TOOLS_BIN}")
+endif()
+
 if(STRATA_BUILD_EXAMPLES)
     add_subdirectory(examples)
 endif()

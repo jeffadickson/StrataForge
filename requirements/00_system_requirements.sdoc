@@ -97,7 +97,7 @@ RATIONALE: >>>
 A single declarative source of truth eliminates flight-software, FPGA-bitstream, and ground-dictionary interface drift and prevents mismatched on-orbit loads.
 <<<
 VERIFICATION_METHOD: Test
-ARTIFACT: tools/strata-gen/strata_gen.py
+ARTIFACT: dotnet/StrataForge.Core/Codegen/StrataManifestGenerator.cs
 
 [REQUIREMENT]
 UID: STRATA-SYS-006

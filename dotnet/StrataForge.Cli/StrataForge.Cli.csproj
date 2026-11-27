@@ -1,0 +1,12 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <RootNamespace>StrataForge.Cli</RootNamespace>
+    <AssemblyName>strata-tools</AssemblyName>
+    <Description>Unified multithreaded .NET 11 CLI for STRATA-20 codegen, operations, Ground Control, StrictDoc validation, safety auditing, bare-metal cross checks, and QEMU EL2 verification.</Description>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\StrataForge.Core\StrataForge.Core.csproj" />
+    <ProjectReference Include="..\StrataForge.Ground\StrataForge.Ground.csproj" />
+  </ItemGroup>
+</Project>

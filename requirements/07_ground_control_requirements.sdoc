@@ -1,7 +1,7 @@
 [DOCUMENT]
 TITLE: STRATA-20 Ground Control and Integration & Test Requirements (StrataGround)
 UID: STRATA-DOC-GDS
-VERSION: 0.1.0
+VERSION: 0.2.0
 
 [GRAMMAR]
 ELEMENTS:
@@ -32,20 +32,20 @@ ELEMENTS:
   - TYPE: Parent
 
 [[SECTION]]
-TITLE: Single-Source-of-Truth Ground Data System and I&T Platform
+TITLE: Single-Source-of-Truth Ground Data System and I&T Platform (.NET 11)
 
 [REQUIREMENT]
 UID: STRATA-GDS-001
 STATUS: Implemented
 TITLE: Manifest-Synchronized Ground Command and Telemetry Dictionary Loader
 STATEMENT: >>>
-The ground control platform (StrataGround) shall load mission commands, telemetry channels, engineering-unit calibration curves, red/yellow limit thresholds, and partition/slot inventories directly from strata-gen mission_dict.json and enforce MANIFEST_HASH lock-step synchronization with the flight build.
+The ground control platform (StrataGround) shall load mission commands, telemetry channels, engineering-unit calibration curves, red/yellow limit thresholds, and partition/slot inventories directly from mission_dict.json into thread-safe FrozenDictionary lookups and enforce MANIFEST_HASH lock-step synchronization with the flight build.
 <<<
 RATIONALE: >>>
 Consuming the exact manifest-generated ground dictionary eliminates manual command/telemetry database drift during FlatSat, TVAC, and flight operations.
 <<<
 VERIFICATION_METHOD: Test
-ARTIFACT: ground/strata_ground/dictionary.py
+ARTIFACT: dotnet/StrataForge.Ground/MissionDictionary.cs
 RELATIONS:
 - TYPE: Parent
   VALUE: STRATA-SYS-005
@@ -55,13 +55,13 @@ UID: STRATA-GDS-002
 STATUS: Implemented
 TITLE: Real-Time Red/Yellow Telemetry Limit Monitoring with Persistence
 STATEMENT: >>>
-The ground control platform shall continuously evaluate calibrated engineering telemetry against lower/upper warning (Yellow) and error (Red) bounds with configurable persistence debouncing and structured alert callbacks.
+The ground control platform shall continuously evaluate calibrated engineering telemetry against lower/upper warning (Yellow) and error (Red) bounds in a thread-safe monitor with configurable persistence debouncing and structured alert callbacks.
 <<<
 RATIONALE: >>>
 Persistence-debounced Red/Yellow limit monitoring prevents transient single-sample glitches from flooding operator consoles while catching genuine thermal, power, and health anomalies immediately.
 <<<
 VERIFICATION_METHOD: Test
-ARTIFACT: ground/strata_ground/limits.py
+ARTIFACT: dotnet/StrataForge.Ground/LimitMonitor.cs
 RELATIONS:
 - TYPE: Parent
   VALUE: STRATA-SYS-005
@@ -71,13 +71,13 @@ UID: STRATA-GDS-003
 STATUS: Implemented
 TITLE: Flight Sequence (.seq) and Parameter Table (ParamBank) Compilers
 STATEMENT: >>>
-The ground control platform shall provide round-trip compilers and decompilers translating human-readable relative/absolute flight command sequences and parameter tables into MANIFEST_HASH-stamped, CRC-32C-verified binary flight images alongside CCSDS TC, ECSS-E-ST-70-41C (PUS-C), EventRecord, and NvLogRecord codecs.
+The ground control platform shall provide round-trip compilers and decompilers translating human-readable relative/absolute flight command sequences and parameter tables into MANIFEST_HASH-stamped, CRC-32C-verified binary flight images alongside CCSDS TC, ECSS-E-ST-70-41C (PUS-C), EventRecord, and NvLogRecord Span codecs.
 <<<
 RATIONALE: >>>
 Deterministic compile/decompile verification before uplink prevents syntax errors, mismatched opcodes, or stale schema hashes from reaching flight software.
 <<<
 VERIFICATION_METHOD: Test
-ARTIFACT: ground/strata_ground/cmd_seq_table.py
+ARTIFACT: dotnet/StrataForge.Ground/FlightCodecs.cs
 RELATIONS:
 - TYPE: Parent
   VALUE: STRATA-SYS-005
@@ -85,15 +85,15 @@ RELATIONS:
 [REQUIREMENT]
 UID: STRATA-GDS-004
 STATUS: Implemented
-TITLE: Pluggable Stream Broker, PCAP Archival, CSV Export, and I&T Test Scripting API
+TITLE: Multithreaded Channel Stream Broker, PCAP Archival, CSV Export, and Async I&T Test API
 STATEMENT: >>>
-The ground control platform shall provide a pluggable telemetry/command stream broker with UDP/SIL ingress, modular packet handlers, standard Wireshark-compatible PCAP binary capture/replay, CSV export, and a Python GroundTestSession automation API supporting send_cmd, send_pus_tc, wait_for_tlm, wait_for_evr, wait_for_pus_tm, and assert_limits_nominal.
+The ground control platform shall provide a multithreaded Channel-backed telemetry/command stream broker with async UDP ingress, parallel worker dispatch, modular packet handlers, standard Wireshark-compatible PCAP binary capture/replay, async CSV export, and a GroundTestSession automation API supporting SendCommand, SendPusTc, WaitForTelemetryAsync, WaitForEventAsync, WaitForPusTmAsync, and AssertLimitsNominal.
 <<<
 RATIONALE: >>>
-Scriptable I&T test procedures combined with lossless PCAP archival allow identical test suites to run unattended across host SIL, Verilator HIL, FlatSat, and TVAC campaigns.
+Multithreaded Channel-backed stream processing and scriptable async I&T test procedures with lossless PCAP archival allow identical test suites to run unattended across host SIL, Verilator HIL, FlatSat, and TVAC campaigns.
 <<<
 VERIFICATION_METHOD: Test
-ARTIFACT: ground/strata_ground/stream_server.py
+ARTIFACT: dotnet/StrataForge.Ground/TelemetryBroker.cs
 RELATIONS:
 - TYPE: Parent
   VALUE: STRATA-SYS-008
@@ -101,15 +101,15 @@ RELATIONS:
 [REQUIREMENT]
 UID: STRATA-GDS-005
 STATUS: Implemented
-TITLE: Zero-Dependency Live Mission Control Web Console and REST API
+TITLE: Concurrent Zero-Dependency Live Mission Control Web Console and REST API
 STATEMENT: >>>
-The ground control platform shall provide a self-contained browser-based Mission Control web console and JSON REST API exposing live calibrated telemetry and limit badges, interactive CCSDS TC and PUS-C command uplink, flight sequence compilation, command history, and live event streams without requiring external web frameworks or build toolchains.
+The ground control platform shall provide a concurrent browser-based Mission Control web console and JSON REST API exposing live calibrated telemetry and limit badges, interactive CCSDS TC and PUS-C command uplink, flight sequence compilation, command history, and live event streams without requiring external web frameworks or third-party packages.
 <<<
 RATIONALE: >>>
-A zero-dependency browser console deploys immediately on air-gapped cleanroom FlatSat and mission operations workstations.
+A zero-dependency concurrent browser console deploys immediately on air-gapped cleanroom FlatSat and mission operations workstations.
 <<<
 VERIFICATION_METHOD: Test
-ARTIFACT: ground/strata_ground/web_console.py
+ARTIFACT: dotnet/StrataForge.Ground/GroundWebConsole.cs
 RELATIONS:
 - TYPE: Parent
   VALUE: STRATA-SYS-008

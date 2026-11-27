@@ -3,9 +3,8 @@ add_executable(dual_instrument_sil
 )
 target_link_libraries(dual_instrument_sil PRIVATE strata::services)
 
-# Build-time single-source-of-truth strata-gen emission -> Versal & Kintex Mission Simulators
-find_package(Python3 COMPONENTS Interpreter)
-if(Python3_Interpreter_FOUND)
+# Build-time single-source-of-truth .NET 11 `strata-tools gen` emission -> Versal & Kintex Mission Simulators
+if(DOTNET_EXECUTABLE)
     # 1. Versal XQRVC1902 5-Partition Mission Integration Simulator
     set(STRATA_VERSAL_GEN_DIR "${CMAKE_CURRENT_BINARY_DIR}/generated_versal")
     set(STRATA_VERSAL_ICD_HPP "${STRATA_VERSAL_GEN_DIR}/strata_mission_icd.hpp")
@@ -13,16 +12,15 @@ if(Python3_Interpreter_FOUND)
 
     add_custom_command(
         OUTPUT "${STRATA_VERSAL_ICD_HPP}" "${STRATA_VERSAL_HYP_HPP}"
-        COMMAND ${Python3_EXECUTABLE}
-                ${CMAKE_SOURCE_DIR}/tools/strata-gen/strata_gen.py
+        COMMAND ${STRATA_TOOLS_CMD} gen
                 ${CMAKE_SOURCE_DIR}/manifests/examples/versal_dual_instrument.toml
                 --seds ${CMAKE_SOURCE_DIR}/manifests/examples/hyperspec_sensor_seds.xml
                 --emit ${STRATA_VERSAL_GEN_DIR}
         DEPENDS
-                ${CMAKE_SOURCE_DIR}/tools/strata-gen/strata_gen.py
+                "${STRATA_TOOLS_BIN}"
                 ${CMAKE_SOURCE_DIR}/manifests/examples/versal_dual_instrument.toml
                 ${CMAKE_SOURCE_DIR}/manifests/examples/hyperspec_sensor_seds.xml
-        COMMENT "Generating synchronized Versal STRATA-20 ICD, Hypervisor, SV, TCL, XTCE & JSON artifacts"
+        COMMENT "Generating synchronized Versal STRATA-20 ICD, Hypervisor, SV, TCL, XTCE & JSON artifacts (.NET 11)"
     )
 
     add_executable(versal_mission_flight_sim
@@ -30,6 +28,7 @@ if(Python3_Interpreter_FOUND)
         "${STRATA_VERSAL_ICD_HPP}"
         "${STRATA_VERSAL_HYP_HPP}"
     )
+    add_dependencies(versal_mission_flight_sim strata_dotnet_tools)
     target_include_directories(versal_mission_flight_sim PRIVATE "${STRATA_VERSAL_GEN_DIR}")
     target_link_libraries(versal_mission_flight_sim PRIVATE strata::services)
 
@@ -40,14 +39,13 @@ if(Python3_Interpreter_FOUND)
 
     add_custom_command(
         OUTPUT "${STRATA_KINTEX_ICD_HPP}" "${STRATA_KINTEX_HYP_HPP}"
-        COMMAND ${Python3_EXECUTABLE}
-                ${CMAKE_SOURCE_DIR}/tools/strata-gen/strata_gen.py
+        COMMAND ${STRATA_TOOLS_CMD} gen
                 ${CMAKE_SOURCE_DIR}/manifests/examples/kintex_dual_instrument.toml
                 --emit ${STRATA_KINTEX_GEN_DIR}
         DEPENDS
-                ${CMAKE_SOURCE_DIR}/tools/strata-gen/strata_gen.py
+                "${STRATA_TOOLS_BIN}"
                 ${CMAKE_SOURCE_DIR}/manifests/examples/kintex_dual_instrument.toml
-        COMMENT "Generating synchronized Kintex STRATA-20 ICD, Hypervisor, SV, TCL, XTCE & JSON artifacts"
+        COMMENT "Generating synchronized Kintex STRATA-20 ICD, Hypervisor, SV, TCL, XTCE & JSON artifacts (.NET 11)"
     )
 
     add_executable(kintex_mission_flight_sim
@@ -55,6 +53,7 @@ if(Python3_Interpreter_FOUND)
         "${STRATA_KINTEX_ICD_HPP}"
         "${STRATA_KINTEX_HYP_HPP}"
     )
+    add_dependencies(kintex_mission_flight_sim strata_dotnet_tools)
     target_include_directories(kintex_mission_flight_sim PRIVATE "${STRATA_KINTEX_GEN_DIR}")
     target_link_libraries(kintex_mission_flight_sim PRIVATE strata::services)
 
@@ -63,6 +62,7 @@ if(Python3_Interpreter_FOUND)
         live_ground_sil/main.cpp
         "${STRATA_VERSAL_ICD_HPP}"
     )
+    add_dependencies(live_ground_sil strata_dotnet_tools)
     target_include_directories(live_ground_sil PRIVATE "${STRATA_VERSAL_GEN_DIR}")
     target_link_libraries(live_ground_sil PRIVATE strata::instruments strata::services)
 endif()

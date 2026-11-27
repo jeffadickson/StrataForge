@@ -130,7 +130,7 @@ RATIONALE: >>>
 Declaring cross-domain boundaries in one human-readable manifest eliminates manual header, register, and ground-database duplication.
 <<<
 VERIFICATION_METHOD: Test
-ARTIFACT: tools/strata-gen/strata_gen.py
+ARTIFACT: dotnet/StrataForge.Core/Codegen/StrataManifestGenerator.cs
 RELATIONS:
 - TYPE: Parent
   VALUE: STRATA-SYS-005
@@ -146,7 +146,7 @@ RATIONALE: >>>
 Catching memory overlaps, over-subscribed CPU schedules, and NoC criticality leaks at build time eliminates entire classes of integration faults before hardware bring-up.
 <<<
 VERIFICATION_METHOD: Test
-ARTIFACT: tools/strata-gen/strata_gen.py
+ARTIFACT: dotnet/StrataForge.Core/Codegen/StrataManifestGenerator.cs
 RELATIONS:
 - TYPE: Parent
   VALUE: STRATA-SYS-005
@@ -162,7 +162,7 @@ RATIONALE: >>>
 Atomic multi-domain generation guarantees bit-exact synchronization across hypervisor, flight C++20 software, and synthesized FPGA bitstreams.
 <<<
 VERIFICATION_METHOD: Test
-ARTIFACT: tools/strata-gen/strata_gen.py
+ARTIFACT: dotnet/StrataForge.Core/Codegen/StrataManifestGenerator.cs
 RELATIONS:
 - TYPE: Parent
   VALUE: STRATA-SYS-005
@@ -178,7 +178,7 @@ RATIONALE: >>>
 Auto-generated XTCE and JSON dictionaries keep mission operations tooling lock-stepped with every flight build automatically.
 <<<
 VERIFICATION_METHOD: Test
-ARTIFACT: tools/strata-gen/strata_gen.py
+ARTIFACT: dotnet/StrataForge.Core/Codegen/StrataManifestGenerator.cs
 RELATIONS:
 - TYPE: Parent
   VALUE: STRATA-SYS-005
@@ -247,7 +247,7 @@ RATIONALE: >>>
 Automated requirements graph verification prevents specification drift and maintains continuous NASA NPR 7150.2D bidirectional traceability across every commit.
 <<<
 VERIFICATION_METHOD: Test
-ARTIFACT: tools/check_sdoc.py
+ARTIFACT: dotnet/StrataForge.Core/Requirements/StrictDocVerifier.cs
 RELATIONS:
 - TYPE: Parent
   VALUE: STRATA-SYS-001
@@ -279,7 +279,7 @@ RATIONALE: >>>
 Executing the real freestanding AArch64 EL2 ELF on emulated Cortex-A72 hardware proves that exception vectors, Stage-2 page tables, C++20 .init_array startup, and fault containment work on target architecture beyond host SIL.
 <<<
 VERIFICATION_METHOD: Test
-ARTIFACT: tools/check_qemu_aarch64_el2.py
+ARTIFACT: dotnet/StrataForge.Core/Audit/BareMetalCrossVerifier.cs
 RELATIONS:
 - TYPE: Parent
   VALUE: STRATA-HYP-009

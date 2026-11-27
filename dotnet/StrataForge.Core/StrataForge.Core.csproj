@@ -1,0 +1,7 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <RootNamespace>StrataForge.Core</RootNamespace>
+    <AssemblyName>StrataForge.Core</AssemblyName>
+    <Description>STRATA-20 manifest validation, parallel multi-domain code generation, XDocument XTCE/SEDS processing, StrictDoc verification, and bare-metal/safety auditing.</Description>
+  </PropertyGroup>
+</Project>

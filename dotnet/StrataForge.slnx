@@ -1,0 +1,5 @@
+<Solution>
+  <Project Path="StrataForge.Core/StrataForge.Core.csproj" />
+  <Project Path="StrataForge.Ground/StrataForge.Ground.csproj" />
+  <Project Path="StrataForge.Cli/StrataForge.Cli.csproj" />
+</Solution>

@@ -1,0 +1,10 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <RootNamespace>StrataForge.Ground</RootNamespace>
+    <AssemblyName>StrataForge.Ground</AssemblyName>
+    <Description>StrataGround multithreaded Ground Data System (GDS) and Integration &amp; Test (I&amp;T) suite for STRATA-20.</Description>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\StrataForge.Core\StrataForge.Core.csproj" />
+  </ItemGroup>
+</Project>

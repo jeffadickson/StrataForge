@@ -18,10 +18,15 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Install toolchain and Verilator
+      - name: Setup .NET 11 SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '11.0.x'
+
+      - name: Install C++20 toolchain and Verilator
         run: |
           sudo apt-get update -qq
-          sudo apt-get install -y -qq cmake ninja-build g++ clang verilator python3
+          sudo apt-get install -y -qq cmake ninja-build g++ clang verilator
 
       - name: Configure (${{ matrix.preset }})
         run: cmake --preset ${{ matrix.preset }}
@@ -38,16 +43,24 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      - name: Setup .NET 11 SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '11.0.x'
+
       - name: Install AArch64, ARM Cortex-R5 cross compilers and QEMU AArch64
         run: |
           sudo apt-get update -qq
-          sudo apt-get install -y -qq g++-aarch64-linux-gnu gcc-arm-none-eabi libnewlib-arm-none-eabi qemu-system-arm python3
+          sudo apt-get install -y -qq g++-aarch64-linux-gnu gcc-arm-none-eabi libnewlib-arm-none-eabi qemu-system-arm
+
+      - name: Build .NET 11 strata-tools
+        run: dotnet build dotnet/StrataForge.slnx -c Release
 
       - name: Verify Versal Cortex-A72 EL2 ELF and Lockstep Cortex-R5F bare-metal builds
-        run: python3 tools/check_baremetal_cross.py
+        run: dotnet/StrataForge.Cli/bin/Release/net11.0/strata-tools check-cross .
 
       - name: Execute bare-metal AArch64 EL2 Hypervisor live on QEMU Cortex-A72
-        run: python3 tools/check_qemu_aarch64_el2.py
+        run: dotnet/StrataForge.Cli/bin/Release/net11.0/strata-tools check-qemu-el2 .
 
   rtl-lint-and-traceability:
     runs-on: ubuntu-24.04
@@ -55,10 +68,18 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      - name: Setup .NET 11 SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '11.0.x'
+
       - name: Install Verilator
         run: |
           sudo apt-get update -qq
-          sudo apt-get install -y -qq verilator python3
+          sudo apt-get install -y -qq verilator
+
+      - name: Build .NET 11 strata-tools (enforces CS1591 XML docs & TreatWarningsAsErrors)
+        run: dotnet build dotnet/StrataForge.slnx -c Release
 
       - name: Lint all SystemVerilog RTL with Verilator -Wall
         run: |
@@ -68,4 +89,4 @@ jobs:
           verilator --lint-only -Wall -Irtl/common rtl/common/scsr_slave.sv rtl/common/sg_dma_shaper.sv rtl/kintex/kintex_platform_shell.sv --top-module kintex_platform_shell
 
       - name: Validate StrictDoc Requirements Traceability Graph
-        run: python3 tools/check_sdoc.py requirements/ .
+        run: dotnet/StrataForge.Cli/bin/Release/net11.0/strata-tools check-sdoc requirements/ .

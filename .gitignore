@@ -56,7 +56,11 @@ obj_dir/
 *.fst
 *.ghw
 
-# Python / strata-gen tooling
+# .NET 11 utilities build artifacts
+dotnet/**/bin/
+dotnet/**/obj/
+
+# Python / legacy tooling cache
 __pycache__/
 *.py[cod]
 .venv/
