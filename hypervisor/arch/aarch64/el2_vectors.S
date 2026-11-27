@@ -30,12 +30,22 @@ _start_el2:
     str     xzr, [x0], #8
     b       1b
 2:
+    // Run static C++20 global constructors (.init_array) deterministically
+    ldr     x19, =__init_array_start
+    ldr     x20, =__init_array_end
+3:
+    cmp     x19, x20
+    b.hs    4f
+    ldr     x0, [x19], #8
+    blr     x0
+    b       3b
+4:
     // Enter C++20 bare-metal hypervisor entry point
     bl      strata_el2_main
 
-3:
+5:
     wfi
-    b       3b
+    b       5b
 
 // -----------------------------------------------------------------------------
 // AArch64 EL2 Vector Table (16 entries x 128 bytes = 2048 bytes, 2 KB aligned)

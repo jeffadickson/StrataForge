@@ -252,4 +252,36 @@ RELATIONS:
 - TYPE: Parent
   VALUE: STRATA-SYS-001
 
+[REQUIREMENT]
+UID: STRATA-VER-005
+STATUS: Implemented
+TITLE: Live Closed-Loop Flight-to-Ground UDP Verification
+STATEMENT: >>>
+The verification suite shall execute a live closed-loop integration test pairing a compiled zero-heap C++20 flight software and mock instrument binary over UDP sockets with StrataGround, validating CCSDS TC and PUS-C uplink, live calibrated telemetry limits, fault injection, autonomous FDIR safing, NvFaultLog persistence, and PCAP/CSV archival.
+<<<
+RATIONALE: >>>
+Running real flight C++20 binaries live against the ground data system over network sockets catches serialization, calibration, limit, and FDIR timing defects before FlatSat hardware integration.
+<<<
+VERIFICATION_METHOD: Test
+ARTIFACT: examples/live_ground_sil/main.cpp
+RELATIONS:
+- TYPE: Parent
+  VALUE: STRATA-SYS-008
+
+[REQUIREMENT]
+UID: STRATA-VER-006
+STATUS: Implemented
+TITLE: Live Bare-Metal QEMU AArch64 EL2 Hypervisor Execution Proof
+STATEMENT: >>>
+The verification suite shall compile, link, and execute the bare-metal freestanding AArch64 EL2 hypervisor image live on QEMU Cortex-A72 virtualization hardware, verifying CurrentEL=2, CNTPCT_EL0 advancement, ARMv8-A Stage-2 MMU isolation, EL1 HVC#0 hypercalls, Stage-2 Data Abort trapping and offender halting, GIC SGI wake-up, NvFaultLog warm-reboot SECDED recovery, and bare-metal SHA-256.
+<<<
+RATIONALE: >>>
+Executing the real freestanding AArch64 EL2 ELF on emulated Cortex-A72 hardware proves that exception vectors, Stage-2 page tables, C++20 .init_array startup, and fault containment work on target architecture beyond host SIL.
+<<<
+VERIFICATION_METHOD: Test
+ARTIFACT: tools/check_qemu_aarch64_el2.py
+RELATIONS:
+- TYPE: Parent
+  VALUE: STRATA-HYP-009
+
 [[/SECTION]]

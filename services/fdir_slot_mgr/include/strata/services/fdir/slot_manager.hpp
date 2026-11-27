@@ -2,12 +2,14 @@
 
 #include <strata/core/expected.hpp>
 #include <strata/core/types.hpp>
+#include <strata/crypto/ed25519.hpp>
 #include <strata/hyp/abi.hpp>
 #include <strata/hw/slot_handle.hpp>
 
 #include <array>
 #include <cstddef>
 #include <cstdint>
+#include <cstring>
 #include <span>
 
 namespace strata::services::fdir {
@@ -29,6 +31,33 @@ struct SignedSlotImage {
     std::array<std::byte, 48U> sha384_digest{};    // 384-bit SHA-384 digest
     std::array<std::byte, 64U> signature_prefix{}; // RSA-4096 / ECDSA-P384 signature handle/prefix
     bool                       staged_in_verified_vol{false};
+};
+
+/// RFC 8032 Ed25519 authentication helper for SignedSlotImage (bitstreams & AIE columns).
+/// Packs canonical image metadata + digest into a deterministic 76-byte signed transcript.
+struct Ed25519SlotImageAuth {
+    static std::array<std::byte, 76U> canonical_transcript(const SignedSlotImage& img) noexcept {
+        std::array<std::byte, 76U> msg{};
+        std::memcpy(msg.data() + 0U, &img.image_id, 4U);
+        std::memcpy(msg.data() + 4U, &img.expected_manifest_hash, 8U);
+        std::memcpy(msg.data() + 12U, &img.storage_addr, 8U);
+        std::memcpy(msg.data() + 20U, &img.image_bytes, 8U);
+        std::memcpy(msg.data() + 28U, img.sha384_digest.data(), 48U);
+        return msg;
+    }
+
+    static void sign_image(SignedSlotImage& img,
+                           std::span<const std::byte, 32U> seed,
+                           std::span<const std::byte, 32U> public_key) noexcept {
+        const auto msg    = canonical_transcript(img);
+        img.signature_prefix = strata::crypto::Ed25519::sign(seed, public_key, msg);
+    }
+
+    [[nodiscard]] static bool verify_image(const SignedSlotImage& img,
+                                           std::span<const std::byte, 32U> public_key) noexcept {
+        const auto msg = canonical_transcript(img);
+        return strata::crypto::Ed25519::verify(public_key, msg, img.signature_prefix);
+    }
 };
 
 /// Pluggable hardware/hypervisor backend concept for SlotManager.

@@ -210,4 +210,52 @@ RELATIONS:
 - TYPE: Parent
   VALUE: STRATA-SYS-001
 
+[REQUIREMENT]
+UID: STRATA-COM-012
+STATUS: Implemented
+TITLE: Freestanding FIPS 180-4 SHA-256 and RFC 2104 HMAC-SHA256 Engine
+STATEMENT: >>>
+The middleware cryptographic library shall provide a freestanding, zero-heap FIPS 180-4 SHA-256 and RFC 2104 HMAC-SHA256 engine with constant-time tag comparison and volatile key zeroization, integrated into SignedAotModuleLoader authentication and verified against official FIPS 180-4 and RFC 4231 test vectors.
+<<<
+RATIONALE: >>>
+Audited zero-heap cryptographic hashing and keyed MAC verification protect uploaded AOT autonomy bytecode and integrity-critical flight tables without external library dependencies.
+<<<
+VERIFICATION_METHOD: Test
+ARTIFACT: middleware/include/strata/crypto/sha256.hpp
+RELATIONS:
+- TYPE: Parent
+  VALUE: STRATA-SYS-001
+
+[REQUIREMENT]
+UID: STRATA-COM-013
+STATUS: Implemented
+TITLE: Freestanding NIST SP 800-38D AES-256-GCM SDLS AEAD Backend
+STATEMENT: >>>
+The middleware cryptographic library shall provide a freestanding, zero-heap FIPS 197 AES-256 and NIST SP 800-38D AES-256-GCM AEAD engine with constant-time 128-bit GHASH authentication, bound as Aes256GcmSdlsBackend for CCSDS 355.0-B-2 SDLS protection and verified against official NIST test vectors.
+<<<
+RATIONALE: >>>
+Standards-compliant AES-256-GCM authenticated encryption guarantees telecommand confidentiality, authenticity, and replay protection across space-to-ground RF links.
+<<<
+VERIFICATION_METHOD: Test
+ARTIFACT: middleware/include/strata/crypto/aes_gcm.hpp
+RELATIONS:
+- TYPE: Parent
+  VALUE: STRATA-COM-002
+
+[REQUIREMENT]
+UID: STRATA-COM-014
+STATUS: Implemented
+TITLE: Freestanding RFC 8032 Ed25519 Digital Signature Verification
+STATEMENT: >>>
+The middleware cryptographic library shall provide a freestanding, zero-heap FIPS 180-4 SHA-512 and RFC 8032 PureEd25519 signature engine with constant-time scalar multiplication and strict canonical scalar rejection, integrated with SlotManager bitstream/AIE image authentication and verified against official RFC 8032 Section 7.1 test vectors.
+<<<
+RATIONALE: >>>
+Asymmetric Ed25519 public-key verification prevents unauthorized partial bitstreams or AIE column images from being loaded into shared FPGA slots even if symmetric link keys are compromised.
+<<<
+VERIFICATION_METHOD: Test
+ARTIFACT: middleware/include/strata/crypto/ed25519.hpp
+RELATIONS:
+- TYPE: Parent
+  VALUE: STRATA-FDIR-007
+
 [[/SECTION]]

@@ -49,6 +49,14 @@ add_executable(test_pus_c_and_nv_log unit/test_pus_c_and_nv_log.cpp)
 target_link_libraries(test_pus_c_and_nv_log PRIVATE strata::services)
 add_test(NAME strata.unit.pus_c_and_nv_log COMMAND test_pus_c_and_nv_log)
 
+add_executable(test_crypto_primitives unit/test_crypto_primitives.cpp)
+target_link_libraries(test_crypto_primitives PRIVATE strata::services)
+add_test(NAME strata.unit.crypto_primitives COMMAND test_crypto_primitives)
+
+add_executable(test_mock_instrument unit/test_mock_instrument.cpp)
+target_link_libraries(test_mock_instrument PRIVATE strata::instruments)
+add_test(NAME strata.unit.mock_instrument COMMAND test_mock_instrument)
+
 # Deterministic Seeded Rule-Based Fuzzer
 add_executable(test_rule_fuzzer rule_fuzzer/test_rule_fuzzer.cpp)
 target_link_libraries(test_rule_fuzzer PRIVATE strata::services)
@@ -143,13 +151,24 @@ if(Python3_Interpreter_FOUND)
         COMMAND ${Python3_EXECUTABLE}
                 ${CMAKE_SOURCE_DIR}/tools/check_baremetal_cross.py
     )
+    add_test(
+        NAME strata.qemu.aarch64_el2_execution
+        COMMAND ${Python3_EXECUTABLE}
+                ${CMAKE_SOURCE_DIR}/tools/check_qemu_aarch64_el2.py
+    )
 endif()
 
-# End-to-End Multi-Partition Mission Flight Integration & Static Safety Audit
-if(TARGET versal_mission_flight_sim AND TARGET kintex_mission_flight_sim)
+# End-to-End Multi-Partition Mission Flight Integration, Live UDP Ground Loop & Static Safety Audit
+if(TARGET versal_mission_flight_sim AND TARGET kintex_mission_flight_sim AND TARGET live_ground_sil)
     add_test(NAME strata.integration.versal_mission_flight_sim COMMAND versal_mission_flight_sim)
     add_test(NAME strata.integration.kintex_mission_flight_sim COMMAND kintex_mission_flight_sim)
     if(Python3_Interpreter_FOUND)
+        add_test(
+            NAME strata.ground.live_udp_flight_loop
+            COMMAND ${Python3_EXECUTABLE}
+                    ${CMAKE_SOURCE_DIR}/ground/tests/test_live_flight_ground_loop.py
+                    $<TARGET_FILE:live_ground_sil>
+        )
         add_test(
             NAME strata.audit.flight_safety_stack_and_heap
             COMMAND ${Python3_EXECUTABLE}
@@ -160,6 +179,7 @@ if(TARGET versal_mission_flight_sim AND TARGET kintex_mission_flight_sim)
                     --elf $<TARGET_FILE:dual_instrument_sil>
                     --elf $<TARGET_FILE:versal_mission_flight_sim>
                     --elf $<TARGET_FILE:kintex_mission_flight_sim>
+                    --elf $<TARGET_FILE:live_ground_sil>
         )
     endif()
 endif()

@@ -4,6 +4,7 @@
 #include <strata/core/crc32c.hpp>
 #include <strata/core/expected.hpp>
 #include <strata/core/types.hpp>
+#include <strata/crypto/aes_gcm.hpp>
 
 #include <array>
 #include <cstddef>
@@ -288,6 +289,41 @@ struct SilReferenceCryptoBackend {
     }
 };
 static_assert(SdlsCryptoBackend<SilReferenceCryptoBackend>);
+
+/// Flight-grade NIST SP 800-38D AES-256-GCM SDLS AEAD backend (zero heap, constant-time tag verify).
+/// Forms the 96-bit GCM IV as [salt_be32 (4B) || seq_num_be64 (8B)] per CCSDS 355.0-B-2.
+struct Aes256GcmSdlsBackend {
+    uint32_t iv_salt{0x5354'5241U}; // "STRA" mission salt
+
+    [[nodiscard]] std::array<std::byte, 12U> make_iv(uint64_t seq) const noexcept {
+        std::array<std::byte, 12U> iv{};
+        write_be32(std::span<std::byte, 4U>{iv.data(), 4U}, iv_salt);
+        write_be32(std::span<std::byte, 4U>{iv.data() + 4U, 4U}, static_cast<uint32_t>(seq >> 32U));
+        write_be32(std::span<std::byte, 4U>{iv.data() + 8U, 4U}, static_cast<uint32_t>(seq & 0xFFFF'FFFFULL));
+        return iv;
+    }
+
+    [[nodiscard]] bool encrypt_and_tag(std::span<const std::byte> key, uint64_t iv_seq,
+                                       std::span<const std::byte> aad,
+                                       std::span<const std::byte> pt, std::span<std::byte> ct,
+                                       std::span<std::byte, 16U> tag) const noexcept {
+        if (key.size() != strata::crypto::Aes256Gcm::kKeyBytes) return false;
+        const auto iv = make_iv(iv_seq);
+        return strata::crypto::Aes256Gcm::encrypt_and_tag(
+            std::span<const std::byte, 32U>{key.data(), 32U}, iv, aad, pt, ct, tag);
+    }
+
+    [[nodiscard]] bool decrypt_and_verify(std::span<const std::byte> key, uint64_t iv_seq,
+                                          std::span<const std::byte> aad,
+                                          std::span<const std::byte> ct, std::span<std::byte> pt,
+                                          std::span<std::byte, 16U> rx_tag) const noexcept {
+        if (key.size() != strata::crypto::Aes256Gcm::kKeyBytes) return false;
+        const auto iv = make_iv(iv_seq);
+        return strata::crypto::Aes256Gcm::decrypt_and_verify(
+            std::span<const std::byte, 32U>{key.data(), 32U}, iv, aad, ct, pt, rx_tag);
+    }
+};
+static_assert(SdlsCryptoBackend<Aes256GcmSdlsBackend>);
 
 /// CCSDS Space Data Link Security (SDLS) Engine with 64-sequence sliding anti-replay window.
 /// Wire layout: [SPI: 2B][SeqNum: 8B][Ciphertext: N][AuthTag: 16B].

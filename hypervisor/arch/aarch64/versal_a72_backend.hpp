@@ -60,7 +60,9 @@ public:
         last_sgi_word_ = (static_cast<uint32_t>(1U << (pid & 0x7U)) << 16U) |
                          static_cast<uint32_t>(channel_id & 0x0FU);
 #if defined(__aarch64__) && !defined(STRATA_HOST_SIL)
-        *reinterpret_cast<volatile uint32_t*>(kVersalGicdSgirAddr) = last_sgi_word_;
+        if (gicd_sgir_addr_ != 0ULL) {
+            *reinterpret_cast<volatile uint32_t*>(gicd_sgir_addr_) = last_sgi_word_;
+        }
 #endif
         return Status::Ok;
     }
@@ -101,6 +103,7 @@ public:
     void set_stage2_root(uint8_t pid, uint64_t root_pa) noexcept {
         stage2_root_pa_[pid & 0xFU] = root_pa;
     }
+    void set_gicd_sgir_addr(uint64_t addr) noexcept { gicd_sgir_addr_ = addr; }
     [[nodiscard]] uint64_t stage2_root(uint8_t pid) const noexcept {
         return stage2_root_pa_[pid & 0xFU];
     }
@@ -115,6 +118,7 @@ private:
     uint8_t                      current_vmid_{0U};
     uint32_t                     last_sgi_word_{0U};
     uint32_t                     scrub_ops_{0U};
+    uint64_t                     gicd_sgir_addr_{kVersalGicdSgirAddr};
     uint64_t                     last_pmc_cmd_{0U};
     uint64_t                     last_diag_word_{0U};
     uint64_t                     synthetic_cntpct_{1'000'000ULL};

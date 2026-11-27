@@ -1,0 +1,101 @@
+[DOCUMENT]
+TITLE: STRATA-20 Mock Flight Instrument Framework Requirements (instruments/)
+UID: STRATA-DOC-SIM
+VERSION: 0.1.0
+
+[GRAMMAR]
+ELEMENTS:
+- TAG: REQUIREMENT
+  FIELDS:
+  - TITLE: UID
+    TYPE: String
+    REQUIRED: True
+  - TITLE: STATUS
+    TYPE: String
+    REQUIRED: True
+  - TITLE: TITLE
+    TYPE: String
+    REQUIRED: True
+  - TITLE: STATEMENT
+    TYPE: String
+    REQUIRED: True
+  - TITLE: RATIONALE
+    TYPE: String
+    REQUIRED: True
+  - TITLE: VERIFICATION_METHOD
+    TYPE: String
+    REQUIRED: True
+  - TITLE: ARTIFACT
+    TYPE: String
+    REQUIRED: True
+  RELATIONS:
+  - TYPE: Parent
+
+[[SECTION]]
+TITLE: Reusable Zero-Heap Mock Flight Instrument Simulation Framework
+
+[REQUIREMENT]
+UID: STRATA-SIM-001
+STATUS: Implemented
+TITLE: Zero-Heap CRTP MockInstrumentBase Harness and Mode FSM
+STATEMENT: >>>
+The mock instrument framework shall provide a freestanding, zero-heap, zero-vtable CRTP base class MockInstrumentBase implementing a deterministic instrument mode state machine (Off, Boot, Standby, Safe, Science, Calibration, Fault), standard command dispatch, cadence stepping, and packed InstrumentHousekeeping telemetry.
+<<<
+RATIONALE: >>>
+A reusable CRTP harness lets mission teams instantiate realistic mock instruments in tens of lines of C++20 while obeying the exact same Class B zero-heap and stack safety budgets as flight software.
+<<<
+VERIFICATION_METHOD: Test
+ARTIFACT: instruments/include/strata/instruments/mock_instrument.hpp
+RELATIONS:
+- TYPE: Parent
+  VALUE: STRATA-SYS-008
+
+[REQUIREMENT]
+UID: STRATA-SIM-002
+STATUS: Implemented
+TITLE: Deterministic Thermal/Power Physics ODE and SCSR RegisterTransport Bank
+STATEMENT: >>>
+The mock instrument framework shall include a deterministic 1st-order thermal and electrical power physics model (thermal capacitance, radiative sink, heater PWM, mode dissipation, bus voltage/current) synchronized with an SCSR-compatible InstrumentRegisterBlock satisfying strata::RegisterTransport with RO, RW, and RW1C latched fault registers.
+<<<
+RATIONALE: >>>
+Coupling physical thermal/power dynamics to a genuine RegisterTransport MMIO bank allows unmodified flight drivers and FDIR monitors to exercise realistic closed-loop hardware behavior in SIL.
+<<<
+VERIFICATION_METHOD: Test
+ARTIFACT: instruments/include/strata/instruments/mock_instrument.hpp
+RELATIONS:
+- TYPE: Parent
+  VALUE: STRATA-MW-006
+
+[REQUIREMENT]
+UID: STRATA-SIM-003
+STATUS: Implemented
+TITLE: Deterministic Fault Injection Engine and Zero-Copy Science Frame Producer
+STATEMENT: >>>
+The mock instrument framework shall provide a time-scheduled and on-demand FaultInjector supporting ThermalRunaway, RegisterSeuBitFlip, FrameCrcCorrupt, DmaStall, WatchdogFreeze, PowerBrownout, OverCurrent, and SensorSaturation, alongside deterministic seeded synthetic science frame generation emitting CRC-32C-verified frames directly into zero-copy FramePool slots.
+<<<
+RATIONALE: >>>
+Deterministic anomaly injection and reproducible zero-copy science frame production enable automated regression testing of FDIR isolation, data pipelines, and ground limits without physical flight sensors.
+<<<
+VERIFICATION_METHOD: Test
+ARTIFACT: instruments/include/strata/instruments/mock_instrument.hpp
+RELATIONS:
+- TYPE: Parent
+  VALUE: STRATA-MW-003
+
+[REQUIREMENT]
+UID: STRATA-SIM-004
+STATUS: Implemented
+TITLE: Reference Multi-Instrument Mock Implementations
+STATEMENT: >>>
+The mock instrument framework shall provide at least two concrete reference instruments built on MockInstrumentBase—HyperspectralImagerMock (VNIR/SWIR pushbroom radiometric cube generator with thermal dark current and point-target PSF) and FluxgateMagnetometerMock (tri-axial orbital dipole field synthesizer with calibration coil pulses)—verifying multi-instrument reuse.
+<<<
+RATIONALE: >>>
+Concrete reference instruments prove framework ergonomics across distinct payload physics domains and serve as ready-to-run templates for mission payloads.
+<<<
+VERIFICATION_METHOD: Test
+ARTIFACT: instruments/include/strata/instruments/reference_instruments.hpp
+RELATIONS:
+- TYPE: Parent
+  VALUE: STRATA-SIM-001
+
+[[/SECTION]]

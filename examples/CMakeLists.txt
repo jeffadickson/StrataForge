@@ -57,4 +57,12 @@ if(Python3_Interpreter_FOUND)
     )
     target_include_directories(kintex_mission_flight_sim PRIVATE "${STRATA_KINTEX_GEN_DIR}")
     target_link_libraries(kintex_mission_flight_sim PRIVATE strata::services)
+
+    # 3. Live Flight-to-Ground UDP SIL Bridge (HyperspectralImagerMock + PUS-C + NvFaultLog)
+    add_executable(live_ground_sil
+        live_ground_sil/main.cpp
+        "${STRATA_VERSAL_ICD_HPP}"
+    )
+    target_include_directories(live_ground_sil PRIVATE "${STRATA_VERSAL_GEN_DIR}")
+    target_link_libraries(live_ground_sil PRIVATE strata::instruments strata::services)
 endif()

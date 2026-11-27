@@ -3,6 +3,7 @@
 #include <strata/core/crc32c.hpp>
 #include <strata/core/expected.hpp>
 #include <strata/core/types.hpp>
+#include <strata/crypto/sha256.hpp>
 #include <strata/services/autonomy/sandbox_runner.hpp>
 
 #include <array>
@@ -70,6 +71,32 @@ struct ReferenceAotVerifier {
     }
 };
 static_assert(AotSignatureVerifier<ReferenceAotVerifier>);
+
+/// Flight-grade RFC 2104 HMAC-SHA256 verifier for signed AOT autonomy modules.
+struct HmacSha256AotVerifier {
+    std::array<std::byte, 32U> signing_key{};
+
+    static void compute_tag(std::span<const std::byte, 32U> key, const SignedAotModuleHeader& hdr,
+                            std::span<const std::byte> code_bytes,
+                            std::span<std::byte, 32U>  out_tag) noexcept {
+        // Authenticate the first 32 bytes of the header (all metadata prior to signature_tag) + code
+        // by hashing metadata || code with SHA-256 and computing HMAC-SHA256 over the digest.
+        strata::crypto::Sha256 h{};
+        h.update(std::span<const std::byte>{reinterpret_cast<const std::byte*>(&hdr), 32U});
+        h.update(code_bytes);
+        const auto digest = h.finalize();
+        const auto mac    = strata::crypto::HmacSha256::compute(key, digest);
+        std::memcpy(out_tag.data(), mac.data(), 32U);
+    }
+
+    [[nodiscard]] bool verify(const SignedAotModuleHeader& hdr,
+                              std::span<const std::byte>   code_bytes) const noexcept {
+        std::array<std::byte, 32U> expected{};
+        compute_tag(signing_key, hdr, code_bytes, expected);
+        return strata::crypto::ct_equal(expected, hdr.signature_tag);
+    }
+};
+static_assert(AotSignatureVerifier<HmacSha256AotVerifier>);
 
 /// ============================================================================
 /// Cryptographically Signed AOT Autonomy Module Loader (STRATA-AUTO-002)

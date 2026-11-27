@@ -22,6 +22,7 @@ include(strata_safety_flags)
 add_subdirectory(hypervisor)
 add_subdirectory(middleware)
 add_subdirectory(services)
+add_subdirectory(instruments)
 
 if(STRATA_BUILD_EXAMPLES)
     add_subdirectory(examples)

@@ -38,13 +38,16 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Install AArch64 and ARM Cortex-R5 bare-metal cross compilers
+      - name: Install AArch64, ARM Cortex-R5 cross compilers and QEMU AArch64
         run: |
           sudo apt-get update -qq
-          sudo apt-get install -y -qq g++-aarch64-linux-gnu gcc-arm-none-eabi libnewlib-arm-none-eabi python3
+          sudo apt-get install -y -qq g++-aarch64-linux-gnu gcc-arm-none-eabi libnewlib-arm-none-eabi qemu-system-arm python3
 
       - name: Verify Versal Cortex-A72 EL2 ELF and Lockstep Cortex-R5F bare-metal builds
         run: python3 tools/check_baremetal_cross.py
+
+      - name: Execute bare-metal AArch64 EL2 Hypervisor live on QEMU Cortex-A72
+        run: python3 tools/check_qemu_aarch64_el2.py
 
   rtl-lint-and-traceability:
     runs-on: ubuntu-24.04
