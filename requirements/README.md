@@ -20,7 +20,7 @@ All system, hypervisor, middleware, flight service, RTL, codegen, and verificati
   ```bash
   python3 tools/check_sdoc.py requirements/ .
   ```
-  Current status: **84/84 requirements Implemented** (`0` orphans, `0` cycles), backed by 17 CTest verification suites covering unit tests, hypervisor SIL, deterministic rule fuzzing, multi-domain `strata-gen` codegen (C++20 / SV / TCL / XTCE / JSON / SEDS), and live Verilator Versal & Kintex RTL co-simulation.
+  Current status: **86/86 requirements Implemented** (`0` orphans, `0` cycles), backed by 24 CTest verification suites covering unit tests, hypervisor SIL, ECSS-E-ST-70-41C (PUS-C), refresh-free TMR+SECDED `NvFaultLog`, deterministic rule fuzzing, multi-domain `strata-gen` codegen, bare-metal AArch64 EL2 / Cortex-R5F cross proofs, and live Verilator Versal & Kintex RTL co-simulation.
 - **StrictDoc HTML / ReqIF / PDF Export** (when `strictdoc` is installed):
   ```bash
   strictdoc export --formats=html,reqif-sdoc --output-dir=build/strictdoc requirements/

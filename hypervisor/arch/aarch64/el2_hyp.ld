@@ -5,6 +5,7 @@ MEMORY {
     HYP_CODE       (rx) : ORIGIN = 0x00100000, LENGTH = 0x00080000
     HYP_RAM        (rw) : ORIGIN = 0x00180000, LENGTH = 0x00080000
     CRITICAL_STORE (rw) : ORIGIN = 0x00200000, LENGTH = 0x00004000
+    MRAM_NVLOG     (rw) : ORIGIN = 0x00204000, LENGTH = 0x00010000
 }
 
 SECTIONS {
@@ -39,4 +40,10 @@ SECTIONS {
         KEEP(*(.critical_store*))
         __critical_store_end = .;
     } > CRITICAL_STORE
+
+    .nv_flight_log (NOLOAD) : {
+        __nv_flight_log_start = .;
+        KEEP(*(.nv_flight_log*))
+        __nv_flight_log_end = .;
+    } > MRAM_NVLOG
 }

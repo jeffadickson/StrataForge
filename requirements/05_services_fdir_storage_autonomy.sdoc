@@ -247,6 +247,22 @@ RELATIONS:
 - TYPE: Parent
   VALUE: STRATA-SYS-008
 
+[REQUIREMENT]
+UID: STRATA-STOR-007
+STATUS: Implemented
+TITLE: Refresh-Free Radiation-Hardened Reboot-Surviving Flight Log (TMR + SECDED)
+STATEMENT: >>>
+The middleware and storage subsystem shall provide a reboot-surviving circular flight log (NvFaultLog) designed for refresh-free non-volatile or radiation-hardened memory blocks (MRAM, FRAM, NVSRAM, or battery-backed SRAM placed in a dedicated .nv_flight_log NOLOAD linker section), featuring a 2-of-3 majority-voted TMR control header, per-word Hamming(72,64) SECDED ECC with in-place single-bit healing and double-bit detection, record CRC-32C, torn-write commit fences, monotonic boot-epoch continuity across cold power cycles, and O(1) incremental background scrubbing.
+<<<
+RATIONALE: >>>
+DRAM loses contents without refresh during power cycles, watchdogs, and brownouts; a refresh-free TMR+SECDED non-volatile memory block guarantees post-mortem crash dumps, trap registers, and reboot markers survive both radiation upsets and full power loss.
+<<<
+VERIFICATION_METHOD: Test
+ARTIFACT: middleware/include/strata/ipc/nv_fault_log.hpp
+RELATIONS:
+- TYPE: Parent
+  VALUE: STRATA-SYS-003
+
 [[/SECTION]]
 
 [[SECTION]]

@@ -325,6 +325,11 @@ SECTIONS {{
         KEEP(*(.critical_store*))
         __critical_store_end = .;
     }} > CRITICAL_STORE
+    .nv_flight_log (NOLOAD) : {{
+        __nv_flight_log_start = .;
+        KEEP(*(.nv_flight_log*))
+        __nv_flight_log_end = .;
+    }} > CRITICAL_STORE
 }}
 """
 

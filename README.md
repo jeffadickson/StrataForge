@@ -26,7 +26,7 @@ StrataForge/
 ```bash
 cmake --preset host-debug        # Also available: host-sanitizers, host-release, host-clang
 cmake --build --preset host-debug
-ctest --preset host-debug        # 23 suites: unit, hypervisor, fuzzer, codegen, StrictDoc, Verilator HIL, ops CLI, bare-metal cross, Versal/Kintex sims & stack/zero-heap audit
+ctest --preset host-debug        # 24 suites: unit, hypervisor, PUS-C, SECDED/TMR NvFaultLog, fuzzer, codegen, StrictDoc, Verilator HIL, ops CLI, bare-metal cross, Versal/Kintex sims & stack/zero-heap audit
 ./build/host-debug/examples/versal_mission_flight_sim
 ./build/host-debug/examples/kintex_mission_flight_sim
 ```
@@ -37,13 +37,14 @@ ctest --preset host-debug        # 23 suites: unit, hypervisor, fuzzer, codegen,
 2. **`SpscChannel<T, QoS>`** — Cache-line-isolated lock-free control rings + hypervisor-rate-limited doorbells + monotonic generation counters
 3. **`DataTopic<T, Pool, QoS>` & `FrameLease`** — Move-only RAII 32-byte descriptor rings for zero-copy 1-to-N CPU/PL/AIE data transfer over XMPU/SMMU pools with crash-safe lease reclamation
 4. **`ParamBank<T>`** — Double-buffered, CRC-32C-verified hot-swappable binary configuration tables with atomic minor-frame commit and rollback
-5. **`CriticalStore<T>`** — Ping-pong CRC-32C persistent RAM checkpoint store surviving warm resets, SEU restarts, and spare-slot failover
+5. **`CriticalStore<T>` & `NvFaultLog<N>`** — Ping-pong CRC-32C warm-restart checkpoint store plus a refresh-free radiation-hardened MRAM/FRAM reboot-surviving flight log (2-of-3 TMR header + Hamming(72,64) SECDED ECC + torn-write fences + background scrubbing in `.nv_flight_log`)
 6. **`SlotHandle<Spec>` & `RegMap`** — Compile-time-safe MMIO (`RO`/`WO`/`RW`/`RW1C`) and unified spatial / DFX / AIE hardware slot lifecycle (`SCSR`)
 
 ## Formal Requirements, Ground Ops & Flight Safety Gates
 
-- **StrictDoc Specifications** ([`requirements/`](requirements/README.md)): **84 / 84 requirements Implemented** (`0` orphans, `0` cycles), validated automatically by `tools/check_sdoc.py`.
-- **Bare-Metal Cross-Compilation Proof** ([`tools/check_baremetal_cross.py`](tools/check_baremetal_cross.py)): Assembles and links a freestanding W^X Versal Cortex-A72 EL2 ELF (`vbar_el2`, `vttbr_el2`, `eret`, `cntpct_el0`, `.critical_store`, zero libc/PLT) and compiles freestanding ARMv7-R Lockstep Cortex-R5F FDIR firmware.
-- **Ground Mission Ops CLI** ([`tools/strata-ops/strata_ops.py`](tools/strata-ops/strata_ops.py)): Consumes `strata-gen`'s `mission_dict.json` for CCSDS TC frame encoding (CRC-16 FECF), polynomial engineering-unit calibration, and binary `EventRecord` decoding.
+- **StrictDoc Specifications** ([`requirements/`](requirements/README.md)): **86 / 86 requirements Implemented** (`0` orphans, `0` cycles), validated automatically by `tools/check_sdoc.py`.
+- **CCSDS & ECSS-E-ST-70-41C (PUS-C) Support**: Native CCSDS Space Packet, TC/TM/AOS/USLP, SDLS, CFDP, plus a lean zero-heap ECSS-E-ST-70-41C (PUS-C) adapter (`ST[01/03/05/06/08/09/11/17]`).
+- **Bare-Metal Cross-Compilation Proof** ([`tools/check_baremetal_cross.py`](tools/check_baremetal_cross.py)): Assembles and links a freestanding W^X Versal Cortex-A72 EL2 ELF (`vbar_el2`, `vttbr_el2`, `eret`, `cntpct_el0`, `.critical_store`, `.nv_flight_log`, zero libc/PLT) and compiles freestanding ARMv7-R Lockstep Cortex-R5F FDIR firmware.
+- **Ground Mission Ops CLI** ([`tools/strata-ops/strata_ops.py`](tools/strata-ops/strata_ops.py)): Consumes `strata-gen`'s `mission_dict.json` for CCSDS TC & PUS-C frame encoding, polynomial engineering-unit calibration, and binary `EventRecord` decoding.
 - **Static Stack-Usage & Zero-Heap Audit** ([`tools/check_flight_safety.py`](tools/check_flight_safety.py)): Enforces bounded per-function stack frames (`<= 4096 B`, zero unbounded dynamic stack) from GCC `.su` reports and verifies zero `malloc`/`free`/`operator new`/`__cxa_throw` references in compiled flight binaries.
 - **Continuous Integration** ([`.github/workflows/ci.yml`](.github/workflows/ci.yml)): Verifies GCC Debug, ASan+UBSan, Release, Clang++ C++20, bare-metal AArch64 EL2 & Cortex-R5F cross builds, Verilator `-Wall` RTL lint + closed-loop Versal/Kintex HIL co-simulation, and StrictDoc traceability on every push.

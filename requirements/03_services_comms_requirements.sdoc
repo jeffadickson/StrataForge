@@ -194,4 +194,20 @@ RELATIONS:
 - TYPE: Parent
   VALUE: STRATA-SYS-002
 
+[REQUIREMENT]
+UID: STRATA-COM-011
+STATUS: Implemented
+TITLE: Limited ECSS-E-ST-70-41C (PUS-C) Wire-Protocol Adapter
+STATEMENT: >>>
+The communications service shall provide a zero-heap, total-function ECSS-E-ST-70-41C (PUS-C) secondary header codec and flight service adapter supporting ST[01] Request Verification (with 4-bit ACK flag gating), ST[03] Housekeeping SID control and reporting, ST[05] Event reporting and filtering, ST[06] Memory load/dump/check, ST[08] Function execution, ST[09] Time reporting, ST[11] Time-based scheduling, and ST[17] Connection test.
+<<<
+RATIONALE: >>>
+Providing a lean, wire-compatible ECSS-E-ST-70-41C adapter directly atop native STRATA-20 flight services enables seamless interoperability with European and international ground control systems without bloating the Class B TCB.
+<<<
+VERIFICATION_METHOD: Test
+ARTIFACT: services/comms/include/strata/services/comms/pus_c.hpp
+RELATIONS:
+- TYPE: Parent
+  VALUE: STRATA-SYS-001
+
 [[/SECTION]]

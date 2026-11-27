@@ -66,7 +66,24 @@ def main() -> int:
         ev = strata_ops.decode_event_record(raw_ev)
         assert ev["event_id"] == "0x0042" and ev["severity"] == "FATAL" and ev["repeat_count"] == 3
 
-    print("OK: strata_ops ground CLI roundtrip (CCSDS TC FECF + engineering calibration + EventRecord) PASSED")
+        # 4. ECSS-E-ST-70-41C PUS-C TC(17,1) CLI encode + TM(17,2) decode check
+        pus_enc = subprocess.run(
+            [sys.executable, str(OPS_SCRIPT), "--dict", str(dict_path), "encode-pus-tc",
+             "--svc", "17", "--sub", "1"],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        assert pus_enc.returncode == 0, pus_enc.stderr
+        raw_pus_tc = bytes.fromhex(pus_enc.stdout.strip())
+        assert len(raw_pus_tc) == 11 and raw_pus_tc[6] == 0x29 and raw_pus_tc[7] == 17 and raw_pus_tc[8] == 1
+
+        tm17_2_payload = struct.pack(">BBBHHQ", 0x20, 17, 2, 1, 1, 999999)
+        tm17_2_sp = struct.pack(">HHH", 0x0800 | 0x105, 0xC000 | 1, len(tm17_2_payload) - 1) + tm17_2_payload
+        dec_tm = strata_ops.decode_pus_c_tm(tm17_2_sp)
+        assert dec_tm["service_type"] == 17 and dec_tm["service_subtype"] == 2 and dec_tm["cuc_tai_ns"] == 999999
+
+    print("OK: strata_ops ground CLI roundtrip (CCSDS TC FECF + PUS-C + calibration + EventRecord) PASSED")
     return 0
 
 

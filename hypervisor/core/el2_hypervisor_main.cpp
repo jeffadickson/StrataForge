@@ -6,6 +6,7 @@
 
 #include <aarch64/versal_a72_backend.hpp>
 #include <strata/hyp/hypervisor.hpp>
+#include <strata/ipc/nv_fault_log.hpp>
 
 #include <cstddef>
 #include <cstdint>
@@ -30,18 +31,22 @@ struct alignas(64) HypBootCheckpoint {
     uint64_t last_trap_far;
 };
 
-__attribute__((section(".critical_store"), used)) HypBootCheckpoint g_hyp_critical_checkpoint{};
+__attribute__((section(".critical_store"), used)) HypBootCheckpoint             g_hyp_critical_checkpoint{};
+__attribute__((section(".nv_flight_log"), used)) strata::NvFaultLogStorage<16U> g_mram_nv_log_storage{};
 
+strata::NvFaultLog<16U>                                               g_nv_log{g_mram_nv_log_storage};
 strata::hyp::arch::VersalA72El2Backend                                g_a72_backend{};
 strata::hyp::HypervisorCore<strata::hyp::arch::VersalA72El2Backend>   g_hypervisor{
     g_a72_backend, /*minor_us=*/10'000U, /*major_us=*/1'000'000U, /*fdir_pid=*/1U};
 
-constexpr uint32_t kEsrEcHvc64 = 0x16U;
+constexpr uint32_t kEsrEcHvc64      = 0x16U;
+constexpr uint64_t kHypManifestHash = 0x14A6'F9D1'9243'B827ULL;
 
 } // namespace
 
 extern "C" uint64_t strata_el2_sync_handler(uint64_t esr_el2, uint64_t elr_el2, uint64_t far_el2,
                                             uint64_t* guest_regs) noexcept {
+    using namespace strata;
     using namespace strata::hyp;
     const uint32_t ec          = static_cast<uint32_t>((esr_el2 >> 26U) & 0x3FU);
     const uint8_t  caller_pid  = g_a72_backend.current_vmid();
@@ -53,6 +58,11 @@ extern "C" uint64_t strata_el2_sync_handler(uint64_t esr_el2, uint64_t elr_el2, 
         return res.has_value() ? res.value() : static_cast<uint64_t>(res.error());
     }
 
+    const uint64_t now_ns = g_a72_backend.read_hw_tai_ns();
+    // Persist trap dump into refresh-free TMR+SECDED MRAM flight log so it survives cold reboot
+    (void)g_nv_log.append(NvRecordKind::CrashTrap, caller_pid, static_cast<uint32_t>(esr_el2),
+                          TaiTimestamp{now_ns}, elr_el2, far_el2, guest_regs[8]);
+
     // Synchronous hardware abort from guest EL1 -> halt offender & wake FDIR partition
     g_hypervisor.on_hardware_trap(TrapContext{
         .partition_id = caller_pid,
@@ -62,7 +72,7 @@ extern "C" uint64_t strata_el2_sync_handler(uint64_t esr_el2, uint64_t elr_el2, 
         .lr           = guest_regs[8],
         .syndrome     = esr_el2,
         .fault_addr   = far_el2,
-        .tai_ns       = g_a72_backend.read_hw_tai_ns(),
+        .tai_ns       = now_ns,
     });
     return 0ULL;
 }
@@ -70,6 +80,10 @@ extern "C" uint64_t strata_el2_sync_handler(uint64_t esr_el2, uint64_t elr_el2, 
 extern "C" void strata_el2_main() noexcept {
     using namespace strata;
     using namespace strata::hyp;
+
+    // Mount reboot-surviving MRAM flight log (preserves prior epochs across power cycles)
+    (void)g_nv_log.mount_on_boot(kHypManifestHash, ResetReason::PowerOnCold,
+                                 TaiTimestamp{g_a72_backend.read_hw_tai_ns()});
 
     // Register static mission partitions & Stage-2 isolation windows
     (void)g_hypervisor.register_partition(PartitionConfig{

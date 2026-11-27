@@ -13,6 +13,7 @@
 #include <strata/ipc/blackboard.hpp>
 #include <strata/ipc/critical_store.hpp>
 #include <strata/ipc/event_ring.hpp>
+#include <strata/ipc/nv_fault_log.hpp>
 #include <strata/ipc/param_bank.hpp>
 #include <strata/ipc/spsc_channel.hpp>
 

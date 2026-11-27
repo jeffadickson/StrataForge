@@ -45,6 +45,10 @@ add_executable(test_extended_services unit/test_extended_services.cpp)
 target_link_libraries(test_extended_services PRIVATE strata::services)
 add_test(NAME strata.unit.extended_services COMMAND test_extended_services)
 
+add_executable(test_pus_c_and_nv_log unit/test_pus_c_and_nv_log.cpp)
+target_link_libraries(test_pus_c_and_nv_log PRIVATE strata::services)
+add_test(NAME strata.unit.pus_c_and_nv_log COMMAND test_pus_c_and_nv_log)
+
 # Deterministic Seeded Rule-Based Fuzzer
 add_executable(test_rule_fuzzer rule_fuzzer/test_rule_fuzzer.cpp)
 target_link_libraries(test_rule_fuzzer PRIVATE strata::services)

@@ -89,13 +89,14 @@ def check_aarch64_el2(td: pathlib.Path) -> str:
     for instr in ("vbar_el2", "vttbr_el2", "eret", "cntpct_el0"):
         assert instr in dis, f"Missing expected AArch64 EL2 instruction '{instr}' in {elf}"
 
-    # Verify .critical_store section exists and zero PLT/heap symbols exist
+    # Verify .critical_store and refresh-free .nv_flight_log sections exist and zero PLT exists
     secs = run([readelf, "-S", str(elf)]).stdout
     assert ".critical_store" in secs, "Missing .critical_store section in EL2 ELF"
+    assert ".nv_flight_log" in secs, "Missing .nv_flight_log section in EL2 ELF"
     assert ".plt" not in secs, "Unexpected .plt dynamic linking section in bare-metal EL2 ELF"
 
     size_bytes = elf.stat().st_size
-    return f"PASS (AArch64 EL2 ELF {size_bytes}B: vbar_el2/vttbr_el2/eret/cntpct_el0 verified, zero libc/PLT)"
+    return f"PASS (AArch64 EL2 ELF {size_bytes}B: vbar_el2/vttbr_el2/eret/cntpct_el0 + .nv_flight_log verified, zero libc/PLT)"
 
 
 def check_arm_r5(td: pathlib.Path) -> str:

@@ -85,6 +85,38 @@ def decode_event_record(raw32: bytes) -> dict:
     }
 
 
+def encode_pus_c_tc(apid: int, seq: int, svc: int, sub: int, app_data: bytes = b"",
+                    ack_flags: int = 0x09, source_id: int = 1) -> bytes:
+    """Encode a CCSDS Space Packet carrying an ECSS-E-ST-70-41C (PUS-C) TC secondary header."""
+    pus_hdr = struct.pack(">BBBH", (2 << 4) | (ack_flags & 0x0F), svc & 0xFF, sub & 0xFF, source_id & 0xFFFF)
+    payload = pus_hdr + app_data
+    w0 = 0x1800 | (apid & 0x07FF)  # TC=1, SecHdr=1
+    w1 = 0xC000 | (seq & 0x3FFF)   # Unsegmented
+    w2 = len(payload) - 1
+    return struct.pack(">HHH", w0, w1, w2) + payload
+
+
+def decode_pus_c_tm(raw_sp: bytes) -> dict:
+    """Decode a CCSDS Space Packet carrying an ECSS-E-ST-70-41C (PUS-C) TM secondary header."""
+    if len(raw_sp) < 6 + 15:
+        raise ValueError("Truncated PUS-C TM Space Packet")
+    w0, w1, w2 = struct.unpack(">HHH", raw_sp[:6])
+    payload = raw_sp[6:6 + w2 + 1]
+    b0, svc, sub, cnt, dest, tai_ns = struct.unpack(">BBBHHQ", payload[:15])
+    if (b0 >> 4) != 2:
+        raise ValueError(f"Expected PUS-C version 2, got {b0 >> 4}")
+    return {
+        "apid": w0 & 0x07FF,
+        "seq_count": w1 & 0x3FFF,
+        "service_type": svc,
+        "service_subtype": sub,
+        "msg_type_counter": cnt,
+        "destination_id": dest,
+        "cuc_tai_ns": tai_ns,
+        "app_data_hex": payload[15:].hex().upper(),
+    }
+
+
 def main(argv: list[str]) -> int:
     parser = argparse.ArgumentParser(description="STRATA-20 Ground Operations CLI & Decoder")
     parser.add_argument("--dict", type=pathlib.Path, required=True, help="Path to mission_dict.json")
@@ -101,6 +133,13 @@ def main(argv: list[str]) -> int:
     p_cal.add_argument("channel")
     p_cal.add_argument("raw", type=lambda s: int(s, 0))
 
+    p_pus = sub.add_parser("encode-pus-tc", help="Encode an ECSS-E-ST-70-41C PUS-C TC Space Packet (hex)")
+    p_pus.add_argument("--apid", type=lambda s: int(s, 0), default=0x105)
+    p_pus.add_argument("--seq", type=int, default=1)
+    p_pus.add_argument("--svc", type=int, required=True)
+    p_pus.add_argument("--sub", type=int, required=True)
+    p_pus.add_argument("--app-hex", default="")
+
     args = parser.parse_args(argv)
     dictionary = json.loads(args.dict.read_text(encoding="utf-8"))
 
@@ -112,6 +151,11 @@ def main(argv: list[str]) -> int:
     if args.cmd == "calibrate":
         out = calibrate_telemetry(dictionary, args.channel, args.raw)
         print(json.dumps(out))
+        return 0
+
+    if args.cmd == "encode-pus-tc":
+        pkt = encode_pus_c_tc(args.apid, args.seq, args.svc, args.sub, bytes.fromhex(args.app_hex))
+        print(pkt.hex().upper())
         return 0
 
     return 1
