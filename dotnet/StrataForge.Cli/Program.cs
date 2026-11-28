@@ -53,6 +53,7 @@ public static class Program
                 "check-safety" => await RunCheckSafetyAsync(rest).ConfigureAwait(false),
                 "check-cross" => await RunCheckCrossAsync(rest).ConfigureAwait(false),
                 "check-qemu-el2" => await RunCheckQemuEl2Async(rest).ConfigureAwait(false),
+                "pcap-slice" => RunPcapSlice(rest),
                 "web-console" => await RunWebConsoleAsync(rest).ConfigureAwait(false),
                 "test" => await RunTestAsync(rest).ConfigureAwait(false),
                 _ => UnknownCommand(cmd),
@@ -319,6 +320,21 @@ public static class Program
         }
 
         Console.WriteLine(res.Summary);
+        return 0;
+    }
+
+    private static int RunPcapSlice(string[] args)
+    {
+        if (args.Length < 4)
+        {
+            Console.Error.WriteLine("Usage: strata-tools pcap-slice <input.pcap> <output.pcap> <start_ns> <end_ns>");
+            return 2;
+        }
+
+        long startNs = long.Parse(args[2], CultureInfo.InvariantCulture);
+        long endNs = long.Parse(args[3], CultureInfo.InvariantCulture);
+        int copied = PcapSlicer.SliceByTimeWindow(args[0], args[1], startNs, endNs);
+        Console.WriteLine($"OK: sliced {copied} packets from {args[0]} -> {args[1]}");
         return 0;
     }
 

@@ -44,7 +44,30 @@ public static class LimitStateExtensions
 }
 
 /// <summary>
-/// Threshold specification and persistence debounce count for a single telemetry channel.
+/// Optional state-dependent gating predicate for a <see cref="LimitSpec"/> (for example,
+/// enforce thermal limits only when <c>HSI_MODE == Science</c>).
+/// </summary>
+/// <param name="WatchChannel">Symbolic peer channel whose latest engineering value gates limit evaluation.</param>
+/// <param name="Predicate">Predicate returning <see langword="true"/> when the limit is active.</param>
+public sealed record LimitCondition(string WatchChannel, Func<double, bool> Predicate);
+
+/// <summary>
+/// Solved raw hardware Data Number (DN) equivalents of a telemetry channel's Red/Yellow limits.
+/// </summary>
+/// <param name="Channel">Symbolic channel name.</param>
+/// <param name="LoErrDn">Optional lower Red error raw DN.</param>
+/// <param name="LoWarnDn">Optional lower Yellow warning raw DN.</param>
+/// <param name="HiWarnDn">Optional upper Yellow warning raw DN.</param>
+/// <param name="HiErrDn">Optional upper Red error raw DN.</param>
+public sealed record RawDnLimitThresholds(
+    string Channel,
+    ulong? LoErrDn,
+    ulong? LoWarnDn,
+    ulong? HiWarnDn,
+    ulong? HiErrDn);
+
+/// <summary>
+/// Threshold specification, persistence debounce count, and optional mode-gating condition for a telemetry channel.
 /// </summary>
 /// <param name="Channel">Symbolic telemetry channel name.</param>
 /// <param name="LoErr">Optional lower Red error limit.</param>
@@ -52,13 +75,15 @@ public static class LimitStateExtensions
 /// <param name="HiWarn">Optional upper Yellow warning limit.</param>
 /// <param name="HiErr">Optional upper Red error limit.</param>
 /// <param name="Persistence">Number of consecutive out-of-limit samples required before tripping an alert.</param>
+/// <param name="Condition">Optional peer-channel gating condition; when unsatisfied, the channel evaluates as <see cref="LimitState.Nominal"/>.</param>
 public sealed record LimitSpec(
     string Channel,
     double? LoErr = null,
     double? LoWarn = null,
     double? HiWarn = null,
     double? HiErr = null,
-    int Persistence = 1);
+    int Persistence = 1,
+    LimitCondition? Condition = null);
 
 /// <summary>
 /// Immutable alert record emitted whenever a channel completes a debounced <see cref="LimitState"/> transition.
@@ -210,13 +235,46 @@ public sealed class LimitMonitor
     }
 
     /// <summary>
-    /// Evaluates a calibrated engineering value against registered Red/Yellow bounds with persistence debouncing.
+    /// Computes raw hardware Data Number (DN) limit thresholds by inverting the calibration curve of <paramref name="tdef"/>.
+    /// </summary>
+    /// <param name="tdef">Telemetry definition providing polynomial calibration coefficients.</param>
+    /// <returns>Solved <see cref="RawDnLimitThresholds"/> for registered bounds (or dictionary defaults).</returns>
+    public RawDnLimitThresholds SolveRawDnThresholds(TelemetryDef tdef)
+    {
+        ArgumentNullException.ThrowIfNull(tdef);
+        LimitSpec? spec;
+        using (_gate.EnterScope())
+        {
+            _specs.TryGetValue(tdef.Name, out spec);
+        }
+
+        double? loErr = spec?.LoErr ?? tdef.LimitLoErr;
+        double? loWarn = spec?.LoWarn ?? tdef.LimitLoWarn;
+        double? hiWarn = spec?.HiWarn ?? tdef.LimitHiWarn;
+        double? hiErr = spec?.HiErr ?? tdef.LimitHiErr;
+
+        return new RawDnLimitThresholds(
+            Channel: tdef.Name,
+            LoErrDn: loErr.HasValue ? tdef.InvertToRawDn(loErr.Value) : null,
+            LoWarnDn: loWarn.HasValue ? tdef.InvertToRawDn(loWarn.Value) : null,
+            HiWarnDn: hiWarn.HasValue ? tdef.InvertToRawDn(hiWarn.Value) : null,
+            HiErrDn: hiErr.HasValue ? tdef.InvertToRawDn(hiErr.Value) : null);
+    }
+
+    /// <summary>
+    /// Evaluates a calibrated engineering value against registered Red/Yellow bounds with persistence debouncing
+    /// and optional mode/state gating against <paramref name="peerChannels"/>.
     /// </summary>
     /// <param name="channel">Symbolic telemetry channel name.</param>
     /// <param name="engValue">Calibrated engineering value.</param>
     /// <param name="timestampNs">Sample timestamp in nanoseconds.</param>
+    /// <param name="peerChannels">Optional snapshot of peer engineering values used to evaluate conditional limits.</param>
     /// <returns>The channel's committed <see cref="LimitState"/> after evaluating this sample.</returns>
-    public LimitState Evaluate(string channel, double engValue, long timestampNs = 0L)
+    public LimitState Evaluate(
+        string channel,
+        double engValue,
+        long timestampNs = 0L,
+        IReadOnlyDictionary<string, double>? peerChannels = null)
     {
         LimitAlert? emittedAlert = null;
         Action<LimitAlert>[]? callbacksSnapshot = null;
@@ -229,7 +287,15 @@ public sealed class LimitMonitor
                 return LimitState.Nominal;
             }
 
-            LimitState rawState = Classify(spec, engValue);
+            bool conditionMet = true;
+            if (spec.Condition is not null)
+            {
+                conditionMet = peerChannels is not null &&
+                               peerChannels.TryGetValue(spec.Condition.WatchChannel, out double watchVal) &&
+                               spec.Condition.Predicate(watchVal);
+            }
+
+            LimitState rawState = conditionMet ? Classify(spec, engValue) : LimitState.Nominal;
             LimitState curState = _states.GetValueOrDefault(channel, LimitState.Nominal);
 
             if (rawState == curState)

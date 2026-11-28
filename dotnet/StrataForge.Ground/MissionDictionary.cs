@@ -52,6 +52,24 @@ public sealed record TelemetryDef(
     /// <param name="rawValue">Raw unsigned integer sample from the spacecraft wire frame.</param>
     /// <returns>The calibrated engineering-unit value.</returns>
     public double Calibrate(ulong rawValue) => CalC0 + (CalC1 * rawValue);
+
+    /// <summary>
+    /// Solves the inverse linear calibration (<c>raw = round((eng - c0) / c1)</c>) to compute a raw Data Number (DN)
+    /// threshold suitable for programming hardware flight comparators.
+    /// </summary>
+    /// <param name="engineeringValue">Target calibrated engineering-unit threshold.</param>
+    /// <returns>Nearest non-negative raw unsigned 64-bit Data Number.</returns>
+    /// <exception cref="InvalidOperationException">Thrown when <see cref="CalC1"/> is zero.</exception>
+    public ulong InvertToRawDn(double engineeringValue)
+    {
+        if (Math.Abs(CalC1) < 1e-15)
+        {
+            throw new InvalidOperationException($"Cannot invert calibration for '{Name}' because CalC1 is zero.");
+        }
+
+        double raw = Math.Round((engineeringValue - CalC0) / CalC1);
+        return raw <= 0.0 ? 0UL : (ulong)raw;
+    }
 }
 
 /// <summary>

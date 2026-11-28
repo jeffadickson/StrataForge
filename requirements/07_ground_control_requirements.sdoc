@@ -114,4 +114,52 @@ RELATIONS:
 - TYPE: Parent
   VALUE: STRATA-SYS-008
 
+[REQUIREMENT]
+UID: STRATA-GDS-006
+STATUS: Implemented
+TITLE: Conditional Mode-Gated Limits, Reverse DN Solver, SCLK/TAI/UTC Correlation, and Derived Channels
+STATEMENT: >>>
+The ground control platform shall support state-dependent conditional telemetry limits gated on peer channels, inverse calibration raw Data Number (DN) threshold solving, bidirectional SCLK/TAI/UTC time correlation with leap seconds and oscillator drift compensation, bitfield extraction, discrete enumeration decoding, and live virtual derived telemetry channels.
+<<<
+RATIONALE: >>>
+Mode-aware limits, hardware DN threshold inversion, spacecraft clock correlation, and virtual derived channels eliminate false alarms across operational modes and accelerate FlatSat/TVAC anomaly triage.
+<<<
+VERIFICATION_METHOD: Test
+ARTIFACT: dotnet/StrataForge.Ground/TimeCorrelation.cs
+RELATIONS:
+- TYPE: Parent
+  VALUE: STRATA-GDS-002
+
+[REQUIREMENT]
+UID: STRATA-GDS-007
+STATUS: Implemented
+TITLE: Rotating Multi-Segment PCAP Capture and Time-Window Anomaly Slicing
+STATEMENT: >>>
+The ground control platform shall provide a thread-safe RotatingPcapArchiver rolling over Wireshark-compatible PCAP files by byte or duration ceiling without packet loss, alongside a PcapSlicer utility extracting inclusive nanosecond time-window slices for targeted anomaly replay.
+<<<
+RATIONALE: >>>
+Bounded rotating PCAP files enable unattended multi-day TVAC campaigns while time-window slicing allows rapid distribution of isolated anomaly captures.
+<<<
+VERIFICATION_METHOD: Test
+ARTIFACT: dotnet/StrataForge.Ground/StreamArchiver.cs
+RELATIONS:
+- TYPE: Parent
+  VALUE: STRATA-GDS-004
+
+[REQUIREMENT]
+UID: STRATA-GDS-008
+STATUS: Implemented
+TITLE: Real-Time SSE Live Stripchart Push, Queryable Time-Series Store, and Async Alert Notification Hub
+STATEMENT: >>>
+The ground control platform shall expose a Server-Sent Events (/api/stream) live telemetry push endpoint, a queryable per-channel TelemetryTimeSeriesStore with window min/max/mean statistics (/api/timeseries) and optional NDJSON archival, and a non-blocking Channel-backed AlertNotificationHub with cooldown deduplication.
+<<<
+RATIONALE: >>>
+Low-latency SSE push stripcharts, queryable pass statistics, and decoupled asynchronous alert fan-out provide responsive mission operations without risking telemetry ingress stalls.
+<<<
+VERIFICATION_METHOD: Test
+ARTIFACT: dotnet/StrataForge.Ground/TimeSeriesStore.cs
+RELATIONS:
+- TYPE: Parent
+  VALUE: STRATA-GDS-005
+
 [[/SECTION]]

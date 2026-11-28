@@ -299,6 +299,100 @@ public sealed class GroundWebConsole : IAsyncDisposable
             return;
         }
 
+        if (path == "/api/timeseries")
+        {
+            string channel = ctx.Request.QueryString["channel"] ?? string.Empty;
+            int limit = int.TryParse(ctx.Request.QueryString["limit"], System.Globalization.NumberStyles.Integer, System.Globalization.CultureInfo.InvariantCulture, out int parsedLim)
+                ? parsedLim
+                : 200;
+
+            IReadOnlyList<TelemetrySample> pts = _broker.TimeSeries.QueryRange(channel, maxPoints: limit);
+            TimeSeriesWindowStats? stats = _broker.TimeSeries.ComputeWindowStats(channel);
+            await WriteJsonAsync(
+                ctx.Response,
+                new
+                {
+                    channel,
+                    stats = stats is null ? null : new
+                    {
+                        count = stats.SampleCount,
+                        min = stats.Min,
+                        max = stats.Max,
+                        mean = stats.Mean,
+                        first_ts = stats.FirstTimestampNs,
+                        last_ts = stats.LastTimestampNs,
+                    },
+                    points = pts.Select(p => new
+                    {
+                        ts = p.TimestampNs,
+                        raw = p.RawValue,
+                        eng = p.EngValue,
+                        state = p.LimitState.ToWireString(),
+                    }).ToList(),
+                },
+                200,
+                ct).ConfigureAwait(false);
+            return;
+        }
+
+        if (path == "/api/stream")
+        {
+            int maxEvents = int.TryParse(ctx.Request.QueryString["max"], System.Globalization.NumberStyles.Integer, System.Globalization.CultureInfo.InvariantCulture, out int parsedMax)
+                ? parsedMax
+                : 0;
+
+            ctx.Response.StatusCode = 200;
+            ctx.Response.ContentType = "text/event-stream";
+            ctx.Response.Headers["Cache-Control"] = "no-cache";
+            ctx.Response.SendChunked = true;
+
+            System.Threading.Channels.ChannelReader<TelemetrySample> reader = _broker.SubscribeTelemetry(out Guid subId);
+            try
+            {
+                // Flush an initial SSE comment heartbeat so clients receive headers immediately
+                byte[] initBytes = Encoding.UTF8.GetBytes(": strata-stream-connected\n\n");
+                await ctx.Response.OutputStream.WriteAsync(initBytes, ct).ConfigureAwait(false);
+                await ctx.Response.OutputStream.FlushAsync(ct).ConfigureAwait(false);
+
+                int sent = 0;
+                await foreach (TelemetrySample sample in reader.ReadAllAsync(ct).ConfigureAwait(false))
+                {
+                    string json = JsonSerializer.Serialize(new
+                    {
+                        channel = sample.Channel,
+                        channel_id = $"0x{sample.ChannelId:X4}",
+                        raw_value = sample.RawValue,
+                        eng_value = sample.EngValue,
+                        unit = sample.Unit,
+                        limit_state = sample.LimitState.ToWireString(),
+                        timestamp_ns = sample.TimestampNs,
+                    });
+                    byte[] payload = Encoding.UTF8.GetBytes($"event: telemetry\ndata: {json}\n\n");
+                    await ctx.Response.OutputStream.WriteAsync(payload, ct).ConfigureAwait(false);
+                    await ctx.Response.OutputStream.FlushAsync(ct).ConfigureAwait(false);
+                    sent++;
+                    if (maxEvents > 0 && sent >= maxEvents)
+                    {
+                        break;
+                    }
+                }
+            }
+            catch (OperationCanceledException)
+            {
+                // Server shutdown or client disconnect
+            }
+            catch (HttpListenerException)
+            {
+                // Client disconnected
+            }
+            finally
+            {
+                _broker.UnsubscribeTelemetry(subId);
+            }
+
+            return;
+        }
+
         await WriteJsonAsync(ctx.Response, new { error = "Not found" }, 404, ct).ConfigureAwait(false);
     }
 

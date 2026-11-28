@@ -195,12 +195,14 @@ public sealed class TelemetryBroker : IAsyncDisposable
     private readonly Lock _pcapGate = new();
     private readonly ConcurrentBag<Action<byte[], long>> _handlers = [];
     private readonly ConcurrentDictionary<string, TelemetrySample> _latestTlm = new(StringComparer.Ordinal);
+    private readonly ConcurrentDictionary<Guid, Channel<TelemetrySample>> _tlmSubscribers = new();
     private readonly ConcurrentQueue<TelemetrySample> _tlmHistory = new();
     private readonly ConcurrentQueue<DecodedEventRecord> _evrHistory = new();
     private readonly ConcurrentQueue<DecodedPusCTm> _pusTmHistory = new();
     private readonly ConcurrentQueue<CommandHistoryEntry> _cmdHistory = new();
 
     private PcapWriter? _pcap;
+    private RotatingPcapArchiver? _rotatingPcap;
     private UdpClient? _udpClient;
     private CancellationTokenSource? _udpCts;
     private Channel<InboundDatagram>? _ingressChannel;
@@ -218,15 +220,72 @@ public sealed class TelemetryBroker : IAsyncDisposable
     public LimitMonitor Limits { get; }
 
     /// <summary>
+    /// Gets the derived-channel, bitfield, and enumeration transformation engine attached to this broker.
+    /// </summary>
+    public DerivedChannelEngine DerivedChannels { get; }
+
+    /// <summary>
+    /// Gets the queryable per-channel time-series store automatically populated on every sample.
+    /// </summary>
+    public TelemetryTimeSeriesStore TimeSeries { get; }
+
+    /// <summary>
     /// Initializes a new multithreaded <see cref="TelemetryBroker"/>.
     /// </summary>
     /// <param name="dictionary">Single-source-of-truth <see cref="MissionDictionary"/>.</param>
     /// <param name="limits">Optional <see cref="LimitMonitor"/> (created automatically from <paramref name="dictionary"/> if omitted).</param>
-    public TelemetryBroker(MissionDictionary dictionary, LimitMonitor? limits = null)
+    /// <param name="derivedChannels">Optional <see cref="DerivedChannelEngine"/> for virtual channels &amp; bitfields.</param>
+    /// <param name="timeSeries">Optional <see cref="TelemetryTimeSeriesStore"/> for time-window queries.</param>
+    public TelemetryBroker(
+        MissionDictionary dictionary,
+        LimitMonitor? limits = null,
+        DerivedChannelEngine? derivedChannels = null,
+        TelemetryTimeSeriesStore? timeSeries = null)
     {
         ArgumentNullException.ThrowIfNull(dictionary);
         Dictionary = dictionary;
         Limits = limits ?? new LimitMonitor(dictionary);
+        DerivedChannels = derivedChannels ?? new DerivedChannelEngine();
+        TimeSeries = timeSeries ?? new TelemetryTimeSeriesStore();
+    }
+
+    /// <summary>
+    /// Attaches an <see cref="AlertNotificationHub"/> so every debounced Red/Yellow limit alert fans out asynchronously.
+    /// </summary>
+    /// <param name="hub">Asynchronous alert notification hub.</param>
+    public void AttachAlertHub(AlertNotificationHub hub)
+    {
+        ArgumentNullException.ThrowIfNull(hub);
+        Limits.OnAlert(hub.Publish);
+    }
+
+    /// <summary>
+    /// Registers a live bounded <see cref="ChannelReader{T}"/> receiving real-time calibrated <see cref="TelemetrySample"/> updates.
+    /// </summary>
+    /// <param name="subscriptionId">Unique token used to remove the subscription via <see cref="UnsubscribeTelemetry"/>.</param>
+    /// <returns>A <see cref="ChannelReader{T}"/> yielding live telemetry samples.</returns>
+    public ChannelReader<TelemetrySample> SubscribeTelemetry(out Guid subscriptionId)
+    {
+        subscriptionId = Guid.NewGuid();
+        Channel<TelemetrySample> ch = Channel.CreateBounded<TelemetrySample>(new BoundedChannelOptions(512)
+        {
+            FullMode = BoundedChannelFullMode.DropOldest,
+            SingleReader = true,
+        });
+        _tlmSubscribers[subscriptionId] = ch;
+        return ch.Reader;
+    }
+
+    /// <summary>
+    /// Removes and completes a live telemetry subscription created by <see cref="SubscribeTelemetry"/>.
+    /// </summary>
+    /// <param name="subscriptionId">Subscription identifier to remove.</param>
+    public void UnsubscribeTelemetry(Guid subscriptionId)
+    {
+        if (_tlmSubscribers.TryRemove(subscriptionId, out Channel<TelemetrySample>? ch))
+        {
+            ch.Writer.TryComplete();
+        }
     }
 
     /// <summary>
@@ -253,7 +312,29 @@ public sealed class TelemetryBroker : IAsyncDisposable
     }
 
     /// <summary>
-    /// Flushes and closes the active PCAP capture file, if any.
+    /// Starts automatic rotating PCAP capture into <paramref name="directory"/> for multi-day TVAC campaigns.
+    /// </summary>
+    /// <param name="directory">Output directory for numbered <c>.pcap</c> segments.</param>
+    /// <param name="prefix">Filename prefix.</param>
+    /// <param name="maxBytesPerFile">Maximum byte size per segment before rollover.</param>
+    /// <param name="maxDurationPerFile">Optional maximum duration per segment before rollover.</param>
+    /// <returns>The active <see cref="RotatingPcapArchiver"/> instance.</returns>
+    public RotatingPcapArchiver StartRotatingPcapCapture(
+        string directory,
+        string prefix = "strata_pass",
+        long maxBytesPerFile = 16L * 1024L * 1024L,
+        TimeSpan? maxDurationPerFile = null)
+    {
+        using (_pcapGate.EnterScope())
+        {
+            _rotatingPcap?.Dispose();
+            _rotatingPcap = new RotatingPcapArchiver(directory, prefix, maxBytesPerFile, maxDurationPerFile);
+            return _rotatingPcap;
+        }
+    }
+
+    /// <summary>
+    /// Flushes and closes any active single-file or rotating PCAP capture archivers.
     /// </summary>
     public void StopPcapCapture()
     {
@@ -261,6 +342,8 @@ public sealed class TelemetryBroker : IAsyncDisposable
         {
             _pcap?.Dispose();
             _pcap = null;
+            _rotatingPcap?.Dispose();
+            _rotatingPcap = null;
         }
     }
 
@@ -382,7 +465,8 @@ public sealed class TelemetryBroker : IAsyncDisposable
     }
 
     /// <summary>
-    /// Calibrates a raw telemetry sample, evaluates Red/Yellow limits, and updates the live snapshot &amp; history.
+    /// Calibrates a raw telemetry sample, evaluates conditional Red/Yellow limits, recomputes virtual derived channels,
+    /// records to <see cref="TimeSeries"/>, and pushes to all live SSE subscribers.
     /// </summary>
     /// <param name="channelId">16-bit telemetry channel identifier.</param>
     /// <param name="rawValue">Raw unsigned 64-bit value.</param>
@@ -393,11 +477,40 @@ public sealed class TelemetryBroker : IAsyncDisposable
         long ts = timestampNs ?? PcapWriter.GetUtcUnixNanoseconds();
         TelemetryDef tdef = Dictionary.GetTelemetry(channelId);
         double eng = tdef.Calibrate(rawValue);
-        LimitState state = Limits.Evaluate(tdef.Name, eng, ts);
+
+        Dictionary<string, double> peers = new(StringComparer.Ordinal);
+        foreach (KeyValuePair<string, TelemetrySample> kv in _latestTlm)
+        {
+            peers[kv.Key] = kv.Value.EngValue;
+        }
+
+        peers[tdef.Name] = eng;
+        LimitState state = Limits.Evaluate(tdef.Name, eng, ts, peers);
         TelemetrySample sample = new(tdef.Name, tdef.ChannelId, rawValue, eng, tdef.Unit, state, ts);
-        _latestTlm[tdef.Name] = sample;
-        _tlmHistory.Enqueue(sample);
+        PublishSample(sample);
+
+        // Recompute any registered virtual derived channels from the updated snapshot
+        IReadOnlyList<(DerivedChannelDef Def, double Value)> derivedList = DerivedChannels.EvaluateAll(_latestTlm);
+        foreach (var (ddef, dval) in derivedList)
+        {
+            peers[ddef.Name] = dval;
+            LimitState dstate = Limits.Evaluate(ddef.Name, dval, ts, peers);
+            TelemetrySample dsample = new(ddef.Name, ddef.VirtualChannelId, 0UL, dval, ddef.Unit, dstate, ts);
+            PublishSample(dsample);
+        }
+
         return sample;
+    }
+
+    private void PublishSample(TelemetrySample sample)
+    {
+        _latestTlm[sample.Channel] = sample;
+        _tlmHistory.Enqueue(sample);
+        TimeSeries.Append(sample);
+        foreach (Channel<TelemetrySample> sub in _tlmSubscribers.Values)
+        {
+            sub.Writer.TryWrite(sample);
+        }
     }
 
     /// <summary>
@@ -545,12 +658,18 @@ public sealed class TelemetryBroker : IAsyncDisposable
     }
 
     /// <summary>
-    /// Stops any active UDP listener and flushes/closes active PCAP files.
+    /// Stops any active UDP listener, completes live subscribers, and flushes/closes active PCAP &amp; time-series archives.
     /// </summary>
     public async ValueTask DisposeAsync()
     {
         await StopUdpListenerAsync().ConfigureAwait(false);
         StopPcapCapture();
+        foreach (Guid id in _tlmSubscribers.Keys)
+        {
+            UnsubscribeTelemetry(id);
+        }
+
+        TimeSeries.Dispose();
     }
 
     private void WriteToPcap(byte[] data, long ts)
@@ -558,6 +677,7 @@ public sealed class TelemetryBroker : IAsyncDisposable
         using (_pcapGate.EnterScope())
         {
             _pcap?.WritePacket(data, ts);
+            _rotatingPcap?.WritePacket(data, ts);
         }
     }
 }

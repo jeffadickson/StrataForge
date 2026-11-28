@@ -379,19 +379,102 @@ public static class VerificationSuites
             string seqJson = await seqResp.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
             AssertTrue(seqJson.Contains("\"command\":\"HSI_SET_INTEGRATION\"", StringComparison.Ordinal), "Sequence compile API failed");
 
+            // 6. Verify advanced mission-ops subsystems (STRATA-GDS-006..008):
+            //    (a) Conditional mode-gated limits & reverse DN comparator threshold solver
+            TelemetryDef tempDef = mdict.GetTelemetry("HSI_DETECTOR_TEMP_K");
+            RawDnLimitThresholds dnLimits = limits.SolveRawDnThresholds(tempDef);
+            // 295.0 K -> (295 - 180) / 0.05 = 2300 DN; 310.0 K -> 2600 DN
+            AssertTrue(dnLimits.HiWarnDn == 2300UL && dnLimits.HiErrDn == 2600UL, "Reverse DN limit solver mismatch");
+
+            LimitMonitor condLimits = new();
+            condLimits.Register(new LimitSpec(
+                "HSI_DETECTOR_TEMP_K",
+                HiWarn: 295.0,
+                HiErr: 310.0,
+                Persistence: 1,
+                Condition: new LimitCondition("HSI_MODE", m => Math.Abs(m - 4.0) < 0.1)));
+            // Mode=2 (Standby) -> thermal limit suppressed even at 315 K
+            var peersStandby = new Dictionary<string, double> { ["HSI_MODE"] = 2.0 };
+            AssertTrue(condLimits.Evaluate("HSI_DETECTOR_TEMP_K", 315.0, 10, peersStandby) == LimitState.Nominal, "Conditional limit should suppress in Standby");
+            // Mode=4 (Science) -> thermal limit trips ErrorHi immediately
+            var peersScience = new Dictionary<string, double> { ["HSI_MODE"] = 4.0 };
+            AssertTrue(condLimits.Evaluate("HSI_DETECTOR_TEMP_K", 315.0, 11, peersScience) == LimitState.ErrorHi, "Conditional limit should trip in Science");
+
+            //    (b) Spacecraft Clock (SCLK <-> TAI <-> UTC) correlation with leap seconds & drift
+            DateTimeOffset epochUtc = new(2026, 6, 1, 0, 0, 0, TimeSpan.Zero);
+            SpacecraftTimeCorrelator corr = new(new SclkCorrelationConfig(SclkEpochSeconds: 1000.0, TaiEpochNs: 0L, DriftRatePpm: 50.0));
+            long epochTaiNs = corr.UtcToTaiNs(epochUtc);
+            AssertTrue(corr.GetTaiMinusUtcSeconds(epochUtc) == 37, "Expected 37s TAI-UTC leap second offset");
+            corr.UpdateCorrelation(new SclkCorrelationConfig(1000.0, epochTaiNs, DriftRatePpm: 50.0));
+            SclkTime sclkT = new(1100U, 32768U); // +100.5 s of spacecraft clock
+            long taiT = corr.SclkToTaiNs(sclkT);
+            SclkTime roundTripSclk = corr.TaiNsToSclk(taiT);
+            AssertTrue(roundTripSclk.CoarseSeconds == 1100U && Math.Abs((int)roundTripSclk.FineTicks - 32768) <= 2, "SCLK round-trip mismatch");
+            AssertTrue(corr.TaiNsToUtc(epochTaiNs) == epochUtc, "TAI <-> UTC round-trip mismatch");
+
+            //    (c) Bitfield extraction, discrete enum mapping, and live derived virtual channels
+            ulong packedWord = 0x0000_0000_0000_F4A5UL; // bits[3:0]=5, bits[7:4]=0xA (-6 signed 4-bit), bits[11:8]=4 (Science)
+            AssertTrue(BitfieldCodec.ExtractUnsigned(packedWord, 0, 4) == 5UL, "Unsigned bitfield mismatch");
+            AssertTrue(BitfieldCodec.ExtractSigned(packedWord, 4, 4) == -6L, "Signed bitfield mismatch");
+            TelemetryEnumMap modeEnum = new("HSI_MODE", [new(0UL, "OFF"), new(4UL, "SCIENCE"), new(6UL, "FAULT")]);
+            broker.DerivedChannels.RegisterEnum(modeEnum);
+            AssertTrue(broker.DerivedChannels.TryDecodeEnum("HSI_MODE", 4UL) == "SCIENCE", "Enum decode mismatch");
+            broker.DerivedChannels.RegisterDerived(new DerivedChannelDef(
+                "HSI_TEMP_DELTA_C",
+                0xF001,
+                "C",
+                snap => snap.TryGetValue("HSI_DETECTOR_TEMP_K", out TelemetrySample? t) ? t.EngValue - 273.15 : null));
+
+            //    (d) Async AlertNotificationHub + live SSE /api/stream + /api/timeseries query
+            await using AlertNotificationHub alertHub = new(cooldown: TimeSpan.FromMilliseconds(500));
+            int hubAlerts = 0;
+            alertHub.AddSink((_, _) => { Interlocked.Increment(ref hubAlerts); return ValueTask.CompletedTask; });
+            broker.AttachAlertHub(alertHub);
+            alertHub.Publish(new LimitAlert("HSI_DETECTOR_TEMP_K", LimitState.WarnHi, LimitState.Nominal, 300.0, "K", 1_000_000_000L));
+            alertHub.Publish(new LimitAlert("HSI_DETECTOR_TEMP_K", LimitState.ErrorHi, LimitState.WarnHi, 315.0, "K", 1_050_000_000L)); // Within 500ms cooldown -> suppressed
+
+            Task<string> sseTask = http.GetStringAsync("/api/stream?max=2", cancellationToken);
+            await Task.Delay(40, cancellationToken).ConfigureAwait(false);
+            broker.IngestTelemetryChannel(0x0010, 2000UL, 1_000_000_000L); // emits HSI_DETECTOR_TEMP_K + derived HSI_TEMP_DELTA_C!
+            string sseBody = await sseTask.WaitAsync(TimeSpan.FromSeconds(2), cancellationToken).ConfigureAwait(false);
+            AssertTrue(sseBody.Contains("event: telemetry", StringComparison.Ordinal) && sseBody.Contains("HSI_TEMP_DELTA_C", StringComparison.Ordinal), "SSE live push failed");
+            AssertTrue(hubAlerts == 1 && alertHub.SuppressedCount >= 1, $"AlertNotificationHub cooldown mismatch: delivered={hubAlerts}, suppressed={alertHub.SuppressedCount}");
+
+            string tsJson = await http.GetStringAsync("/api/timeseries?channel=HSI_DETECTOR_TEMP_K&limit=50", cancellationToken).ConfigureAwait(false);
+            AssertTrue(tsJson.Contains("\"stats\"", StringComparison.Ordinal) && tsJson.Contains("\"points\"", StringComparison.Ordinal), "Timeseries REST endpoint failed");
+            AssertTrue(broker.TryGetLatestTelemetry("HSI_TEMP_DELTA_C", out TelemetrySample? derivedSample) && Math.Abs(derivedSample!.EngValue - 6.85) < 0.01, "Derived channel value mismatch");
+
+            //    (e) Rotating PCAP archiver rollover + time-window PCAP slicing
+            string rotDir = Path.Combine(tempDir, "rot_pcap");
+            using (RotatingPcapArchiver rot = new(rotDir, "tvac", maxBytesPerFile: 90L))
+            {
+                for (int i = 0; i < 6; i++)
+                {
+                    rot.WritePacket(new byte[24], 1_000_000_000L + (i * 1_000_000L));
+                }
+
+                AssertTrue(rot.CreatedFiles.Count >= 3, $"Expected >=3 rotated PCAP segments, got {rot.CreatedFiles.Count}");
+            }
+
             await console.StopAsync().ConfigureAwait(false);
             await broker.StopUdpListenerAsync().ConfigureAwait(false);
             broker.StopPcapCapture();
 
             IReadOnlyList<(long, byte[])> pcapPkts = PcapReader.ReadAll(pcapPath);
             AssertTrue(pcapPkts.Count >= 10, $"Expected >=10 PCAP packets, got {pcapPkts.Count}");
+            string slicedPcap = Path.Combine(tempDir, "sliced.pcap");
+            long sliceStart = pcapPkts[2].Item1;
+            long sliceEnd = pcapPkts[5].Item1;
+            int slicedCount = PcapSlicer.SliceByTimeWindow(pcapPath, slicedPcap, sliceStart, sliceEnd);
+            AssertTrue(slicedCount >= 4 && PcapReader.ReadAll(slicedPcap).Count == slicedCount, "PCAP time-window slicing mismatch");
+
             await TelemetryBroker.ExportTelemetryCsvAsync(broker.GetTelemetryHistory(), csvPath, cancellationToken).ConfigureAwait(false);
             AssertTrue(new FileInfo(csvPath).Length > 100, "CSV export empty");
 
             Console.WriteLine(
                 $"OK: StrataGround (.NET 11 multithreaded) GDS & I&T suite PASSED " +
-                $"| pcap_packets={pcapPkts.Count} | tlm_samples={broker.GetTelemetryHistory().Count} " +
-                $"| limit_alerts={limits.GetAlertHistory().Count} | web_api=OK");
+                $"| pcap_packets={pcapPkts.Count} | sliced={slicedCount} | tlm_samples={broker.GetTelemetryHistory().Count} " +
+                $"| limit_alerts={limits.GetAlertHistory().Count} | sse_push=OK | web_api=OK");
             return 0;
         }
         finally

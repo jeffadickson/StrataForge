@@ -30,6 +30,7 @@
   button { background: var(--accent); color: #05101d; font-weight: 700; cursor: pointer; border: none; }
   .row { display: flex; gap: 8px; margin-bottom: 8px; flex-wrap: wrap; }
   pre { background: #090e18; padding: 8px; border-radius: 4px; overflow-x: auto; font-size: 11px; max-height: 180px; }
+  svg.stripchart { width: 100%; height: 150px; background: #090e18; border: 1px solid var(--border); border-radius: 4px; }
 </style>
 </head>
 <body>
@@ -40,11 +41,22 @@
 
 <div class="grid">
   <section>
-    <h2>Live Calibrated Telemetry &amp; Limits</h2>
+    <h2>Live Calibrated Telemetry &amp; Limits (SSE Push)</h2>
     <table>
       <thead><tr><th>Channel</th><th>Raw</th><th>Eng</th><th>Status</th></tr></thead>
       <tbody id="tlmBody"></tbody>
     </table>
+  </section>
+
+  <section>
+    <h2>Real-Time Stripchart &amp; Window Stats</h2>
+    <div class="row">
+      <select id="plotSelect" onchange="refreshPlot()"></select>
+      <span id="plotStats" style="font-size:11px;color:var(--muted);align-self:center"></span>
+    </div>
+    <svg class="stripchart" id="stripSvg" viewBox="0 0 400 140" preserveAspectRatio="none">
+      <polyline id="stripLine" fill="none" stroke="#38bdf8" stroke-width="2" points="" />
+    </svg>
   </section>
 
   <section>
@@ -78,6 +90,12 @@
 </div>
 
 <script>
+const liveMap = new Map();
+function renderTable() {
+  document.getElementById('tlmBody').innerHTML = Array.from(liveMap.values()).map(r =>
+    `<tr><td>${r.channel}</td><td>${r.raw_value}</td><td>${Number(r.eng_value).toFixed(2)} ${r.unit}</td>` +
+    `<td><span class="badge ${r.limit_state}">${r.limit_state}</span></td></tr>`).join('');
+}
 async function loadDict() {
   const d = await (await fetch('/api/dictionary')).json();
   document.getElementById('missionMeta').textContent =
@@ -90,35 +108,71 @@ async function loadDict() {
     o.textContent = `${c.name} (0x${c.opcode.toString(16).toUpperCase()}, ${c.payload_bytes}B)`;
     sel.appendChild(o);
   }
+  const psel = document.getElementById('plotSelect');
+  psel.innerHTML = '';
+  for (const t of d.telemetry || []) {
+    const o = document.createElement('option');
+    o.value = t.name;
+    o.textContent = `${t.name} (${t.unit || 'raw'})`;
+    psel.appendChild(o);
+  }
 }
-async function poll() {
+async function refreshPlot() {
+  const ch = document.getElementById('plotSelect').value;
+  if (!ch) return;
+  const res = await (await fetch(`/api/timeseries?channel=${encodeURIComponent(ch)}&limit=120`)).json();
+  const pts = res.points || [];
+  if (res.stats) {
+    document.getElementById('plotStats').textContent =
+      `n=${res.stats.count} min=${res.stats.min.toFixed(2)} max=${res.stats.max.toFixed(2)} mean=${res.stats.mean.toFixed(2)}`;
+  }
+  if (pts.length < 2) return;
+  let mn = Math.min(...pts.map(p => p.eng)), mx = Math.max(...pts.map(p => p.eng));
+  if (mx - mn < 1e-6) { mn -= 1; mx += 1; }
+  const poly = pts.map((p, i) => {
+    const x = (i / (pts.length - 1)) * 396 + 2;
+    const y = 134 - ((p.eng - mn) / (mx - mn)) * 124;
+    return `${x.toFixed(1)},${y.toFixed(1)}`;
+  }).join(' ');
+  document.getElementById('stripLine').setAttribute('points', poly);
+}
+async function pollAux() {
   const t = await (await fetch('/api/telemetry')).json();
-  document.getElementById('tlmBody').innerHTML = t.telemetry.map(r =>
-    `<tr><td>${r.channel}</td><td>${r.raw_value}</td><td>${Number(r.eng_value).toFixed(2)} ${r.unit}</td>` +
-    `<td><span class="badge ${r.limit_state}">${r.limit_state}</span></td></tr>`).join('');
+  for (const r of t.telemetry || []) liveMap.set(r.channel, r);
+  renderTable();
   const h = await (await fetch('/api/history')).json();
   document.getElementById('cmdHist').textContent = JSON.stringify(h.commands, null, 2);
   const e = await (await fetch('/api/events')).json();
   document.getElementById('evrOut').textContent = JSON.stringify(e, null, 2);
+  refreshPlot();
+}
+function startSse() {
+  const es = new EventSource('/api/stream');
+  es.addEventListener('telemetry', ev => {
+    const r = JSON.parse(ev.data);
+    liveMap.set(r.channel, r);
+    renderTable();
+    if (document.getElementById('plotSelect').value === r.channel) refreshPlot();
+  });
 }
 async function sendCmd() {
   await fetch('/api/command', {method:'POST', headers:{'Content-Type':'application/json'},
     body: JSON.stringify({command: document.getElementById('cmdSelect').value, arg_hex: document.getElementById('cmdArg').value})});
-  poll();
+  pollAux();
 }
 async function sendPus() {
   await fetch('/api/command', {method:'POST', headers:{'Content-Type':'application/json'},
     body: JSON.stringify({mode:'pus', service_type: +document.getElementById('pusSvc').value,
       service_subtype: +document.getElementById('pusSub').value, app_hex: document.getElementById('pusApp').value})});
-  poll();
+  pollAux();
 }
 async function compileSeq() {
   const r = await (await fetch('/api/sequence/compile', {method:'POST', headers:{'Content-Type':'application/json'},
     body: JSON.stringify({text: document.getElementById('seqText').value})})).json();
   document.getElementById('seqOut').textContent = JSON.stringify(r, null, 2);
 }
-loadDict().then(poll);
-setInterval(poll, 1000);
+loadDict().then(() => { pollAux(); startSse(); });
+setInterval(pollAux, 2000);
 </script>
 </body>
 </html>
